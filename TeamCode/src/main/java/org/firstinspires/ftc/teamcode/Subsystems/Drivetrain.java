@@ -11,7 +11,7 @@ import com.qualcomm.robotcore.hardware.IMU;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-import org.firstinspires.ftc.teamcode.Utility.Constants;
+import org.firstinspires.ftc.teamcode.Utility.Constants.DrivetrainConstants;
 import org.firstinspires.ftc.teamcode.Utility.Geometry.Pose2d;
 
 public class Drivetrain implements Subsystem{
@@ -24,7 +24,8 @@ public class Drivetrain implements Subsystem{
     private IMU imu;
 
     // Settings
-    boolean fieldCentric = false;
+    private boolean fieldCentricEnabled = false;
+    private boolean velocityDriveEnabled = false;
 
     // Flags
     private boolean isSetup = false;
@@ -99,7 +100,6 @@ public class Drivetrain implements Subsystem{
         imu.initialize(imuSettings);
     }
 
-
     /**
      * Sets up the drivetrain so that it can function.
      * @param opModeHardwareMap The opMode's hardware map. This is required in order to gian access
@@ -118,33 +118,6 @@ public class Drivetrain implements Subsystem{
     }
 
     /**
-     * Converts speeds into motor inputs so that the robot can drive.
-     *
-     * @param xSpeed The speed the robot will drive along the X axis.
-     * @param zSpeed The speed the robot will drive along the Z axis.
-     * @param rotationalSpeed The speed the robot will rotate.
-     */
-    public void driveRobotWithMotorPower(double xSpeed, double zSpeed, double rotationalSpeed) {
-
-        // The denominator is the largest motor power.
-        // Motor power cannot exceed 1, so we need to divide the values to ensure that the motors
-        // maintain the same ration.
-        double denominator = Math.max(Math.abs(xSpeed) + Math.abs(xSpeed) + Math.abs(zSpeed) + Math.abs(rotationalSpeed), 1);
-
-        // Calculate the power for each individual motor.
-        double frontRightSpeed = (zSpeed - xSpeed - rotationalSpeed) / denominator;
-        double backRightSpeed = (zSpeed + xSpeed - rotationalSpeed) / denominator;
-        double frontLeftSpeed = (zSpeed + xSpeed + rotationalSpeed) / denominator;
-        double backLeftSpeed = (zSpeed - xSpeed + rotationalSpeed) / denominator;
-
-        // Set the power for each motor.
-        frontRightDriveMotor.setPower(frontRightSpeed);
-        backRightDriveMotor.setPower(backRightSpeed);
-        frontLeftDriveMotor.setPower(frontLeftSpeed);
-        backLeftDriveMotor.setPower(backLeftSpeed);
-    }
-
-    /**
      * Preforms necessary calculations required to drive the robot in the desired direction at the
      * desired speed.
      *
@@ -155,25 +128,110 @@ public class Drivetrain implements Subsystem{
     public void driveRobotWithControllerInputs(double xInput, double zInput, double rotationalInput) {
 
         // Keep track of the robot's velocity in each direction.
-        double xVelocityMeters = xInput;
-        double zVelocityMeters = zInput;
+        double xMotion = xInput;
+        double zMotion = zInput;
+        double rotationalMotion = rotationalInput;
 
         // If the robot is instructed to drive in a field centric manner, rotate the inputs.
-        if (fieldCentric) {
+        if (fieldCentricEnabled ) {
 
             // Store the robot's rotation.
             double robotYawRadians = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
 
             // Rotate the velocity value
-            xVelocityMeters = (xVelocityMeters * Math.cos(-robotYawRadians)) - (zVelocityMeters * Math.sin(-robotYawRadians));
-            zVelocityMeters = (xVelocityMeters * Math.sin(-robotYawRadians)) + (zVelocityMeters * Math.cos(-robotYawRadians));
+            xMotion = (xInput * Math.cos(-robotYawRadians)) - (zInput * Math.sin(-robotYawRadians));
+            zMotion = (xInput * Math.sin(-robotYawRadians)) + (zInput * Math.cos(-robotYawRadians));
+        }
+
+        // If velocityDrive is enabled, convert each motion value into a velocity value.
+        if (velocityDriveEnabled) {
+
+            // Get the max speed that each motor can turn and save it as a variable. his is done to
+            // improve code readability.
+            double maxAngularVelocity = DrivetrainConstants.MAX_MOTOR_ANGULAR_VELOCITY_RADIANS_PER_SECOND;
+
+            // Convert each value into a velocity value.
+            xMotion *= maxAngularVelocity;
+            zMotion *= maxAngularVelocity;
+            rotationalMotion *= maxAngularVelocity;
         }
 
         // Counteract Imperfect Strafing.
-        xVelocityMeters *= Constants.DrivetrainConstants.STRAIF_OFFSET_MULTIPLIER;
+        xMotion *= DrivetrainConstants.STRAIF_OFFSET_MULTIPLIER;
 
         // Drive the robot in the desired direction using the adjusted values.
-        driveRobotWithMotorPower(xVelocityMeters, zVelocityMeters, rotationalInput);
+        driveRobot(xMotion, zMotion, rotationalInput);
+    }
+
+    /**
+     * Converts speeds into motor inputs so that the robot can drive.
+     *
+     * @param xMotion The speed the robot will drive along the X axis.
+     * @param zMotion The speed the robot will drive along the Z axis.
+     * @param rotationalMotion The speed the robot will rotate.
+     */
+    public void driveRobot(double xMotion, double zMotion, double rotationalMotion) {
+
+        // The scalingFactor is the largest motor power / velocity.
+        // The motor power / velocity cannot exceed a specific value, so it needs to be scaled down
+        // in order to maintain a consistent ratio between each motor.
+        double scalingFactor;
+        double absoluteMotionSum = Math.abs(xMotion) + Math.abs(zMotion) + Math.abs(rotationalMotion);
+
+        // Calculate the denominator differently based on whether or not the robot is driving using velocity.
+        if (velocityDriveEnabled) {
+            scalingFactor = Math.max(absoluteMotionSum, DrivetrainConstants.MAX_MOTOR_ANGULAR_VELOCITY_RADIANS_PER_SECOND);
+        } else {
+            scalingFactor = Math.max(absoluteMotionSum, DrivetrainConstants.MAX_MOTOR_POWER);
+        }
+
+        // Calculate the motion for each individual motor.
+        double frontRightSpeed = (zMotion - xMotion - rotationalMotion) / scalingFactor;
+        double backRightSpeed = (zMotion + xMotion - rotationalMotion) / scalingFactor;
+        double frontLeftSpeed = (zMotion + xMotion + rotationalMotion) / scalingFactor;
+        double backLeftSpeed = (zMotion - xMotion + rotationalMotion) / scalingFactor;
+
+        // If the robot is driving using velocity, set the velocity of each motor.
+        // Otherwise, set the motor power of each motor.
+        if (velocityDriveEnabled) {
+            setMotorVelocity(frontRightSpeed, backRightSpeed, frontLeftSpeed, backLeftSpeed);
+        } else {
+            setMotorPower(frontRightSpeed, backRightSpeed, frontLeftSpeed, backLeftSpeed);
+        }
+    }
+
+    /**
+     * Sets each motor to the specified velocity.
+     *
+     * @param frontRightVelocity The velocity that the front right motor will be set to.
+     * @param backRightVelocity The velocity that the back right motor will be set to.
+     * @param frontLeftVelocity The velocity that the front left motor will be set to.
+     * @param backLeftVelocity The velocity that the back left motor will be set to.
+     */
+    private void setMotorVelocity(double frontRightVelocity, double backRightVelocity, double frontLeftVelocity, double backLeftVelocity) {
+
+        // Set the velocity for each motor.
+        frontRightDriveMotor.setVelocity(frontRightVelocity);
+        backRightDriveMotor.setVelocity(backRightVelocity);
+        frontLeftDriveMotor.setVelocity(frontLeftVelocity);
+        backLeftDriveMotor.setVelocity(backLeftVelocity);
+    }
+
+    /**
+     * Sets each motor to the specified power.
+     *
+     * @param frontRightPower The power that the front right motor will be set to.
+     * @param backRightPower The power that the back right motor will be set to.
+     * @param frontLeftPower The power that the front left motor will be set to.
+     * @param backLeftPower The power that the back left motor will be set to.
+     */
+    private void setMotorPower(double frontRightPower, double backRightPower, double frontLeftPower, double backLeftPower) {
+
+        // Set the velocity for each motor.
+        frontRightDriveMotor.setPower(frontRightPower);
+        backRightDriveMotor.setPower(backRightPower);
+        frontLeftDriveMotor.setPower(frontLeftPower);
+        backLeftDriveMotor.setPower(backLeftPower);
     }
 
     /**
@@ -181,16 +239,32 @@ public class Drivetrain implements Subsystem{
      * manner, it will now drive in a robot centric manner.
      */
     public void toggleFieldCentricDrive() {
-        fieldCentric = !fieldCentric;
+        fieldCentricEnabled = !fieldCentricEnabled;
+    }
+
+    /**
+     * Toggles whether or not the robot is driving with velocity or motor power.
+     */
+    public void toggleVelocityDrive() {
+        velocityDriveEnabled = !velocityDriveEnabled;
     }
 
     /**
      * Sets the robot's field centric state to the specified state.
      *
-     * @param fieldCentricDrive Whether or not the robot will drive in a field centric manner.
+     * @param enabled Whether or not the robot will drive in a field centric manner.
      */
-    public void setFieldCentricDrive(boolean fieldCentricDrive) {
-        this.fieldCentric = fieldCentricDrive;
+    public void toggleFieldCentricDrive(boolean enabled) {
+        this.fieldCentricEnabled = enabled;
+    }
+
+    /**
+     * Sets whether or not the robot will drive using velocity or motor power.
+     *
+     * @param enabled Whether or not the robot will drive using velocity.
+     */
+    public void toggleVelocityDrive(boolean enabled) {
+        velocityDriveEnabled = enabled;
     }
 
     /**
@@ -198,8 +272,17 @@ public class Drivetrain implements Subsystem{
      *
      * @return Whether or not the robot is driving in a field centric manner.
      */
-    public boolean getFieldCentricState() {
-        return fieldCentric;
+    public boolean getFieldCentricEnabled() {
+        return fieldCentricEnabled;
+    }
+
+    /**
+     * Returns whether or not the robot is driving using velocity.
+     *
+     * @return Whether or not the robot is driving using velocity.
+     */
+    public boolean getVelocityDriveEnabled() {
+        return velocityDriveEnabled;
     }
 
     @Override

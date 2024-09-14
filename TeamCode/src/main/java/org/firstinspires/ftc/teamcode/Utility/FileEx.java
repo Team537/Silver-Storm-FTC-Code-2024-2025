@@ -120,18 +120,28 @@ public class FileEx {
         }
 
         // Logic to convert the value to the desired data type.
-        if (conversionType.equals(Integer.class)) {
-            return conversionType.cast(Integer.parseInt(value));
-        } else if (conversionType == Double.class) {
-            return conversionType.cast(Double.parseDouble(value));
-        } else if (conversionType.equals(Float.class)) {
-            return conversionType.cast(Float.parseFloat(value));
-        } else if (conversionType.equals(Boolean.class)) {
-            return conversionType.cast(Boolean.parseBoolean(value));
-        } else if (conversionType.equals(String.class)) {
-            return conversionType.cast(value);
-        } else {
-            throw new IllegalArgumentException("Unsupported data type: " + conversionType.getName());
+        Object result;
+        switch (conversionType.getSimpleName()) {
+            case "Integer":
+                result = Integer.parseInt(value);
+                break;
+            case "Double":
+                result = Double.parseDouble(value);
+                break;
+            case "Float":
+                result = Float.parseFloat(value);
+                break;
+            case "Boolean":
+                result = Boolean.parseBoolean(value);
+                break;
+            case "String":
+                result = value;
+                break;
+            default:
+                throw new IllegalArgumentException("Unsupported data type: " + conversionType.getName());
         }
+
+        // Return the result
+        return conversionType.cast(result);
     }
 }

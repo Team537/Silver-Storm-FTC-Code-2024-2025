@@ -23,12 +23,31 @@ public class Drivetrain implements Subsystem{
     private DcMotorEx backLeftDriveMotor;
     private IMU imu;
 
+    // Settings
+    boolean fieldCentric = false;
+
     // Flags
     private boolean isSetup = false;
 
     // Storage
     private Pose2d robotPosition;
     private Telemetry telemetry;
+
+    /**
+     * Creates a new drivetrain, with the default starting position.
+     */
+    public Drivetrain() {
+        robotPosition = new Pose2d();
+    }
+
+    /**
+     * Create a new drivetrain, with its position set to the provided Pose2d.
+     *
+     * @param startingLocation The robot's position on the field, as a Pose2d.
+     */
+    public Drivetrain(Pose2d startingLocation) {
+        robotPosition = startingLocation;
+    }
 
     /**
      * Sets up the robot's hardware.
@@ -99,23 +118,6 @@ public class Drivetrain implements Subsystem{
     }
 
     /**
-     * Sets up the drivetrain so that it can function.
-     * @param opModeHardwareMap The opMode's hardware map. This is required in order to gian access
-     *                          to the robot's hardware.
-     * @param opModeTelemetry The opMode's telemetry. This is required in order to output
-     *                        diagnostic / feedback information.
-     * @param startingPosition  The starting position of the robot, as a Pose2d.
-     */
-    public void init(HardwareMap opModeHardwareMap, Telemetry opModeTelemetry, Pose2d startingPosition) {
-
-        // Setup the robot's hardware.
-        setupHardware(opModeHardwareMap);
-
-        // Set the robot's position.
-        robotPosition = startingPosition;
-    }
-
-    /**
      * Converts speeds into motor inputs so that the robot can drive.
      *
      * @param xSpeed The speed the robot will drive along the X axis.
@@ -149,9 +151,8 @@ public class Drivetrain implements Subsystem{
      * @param xInput The controller input correlated to motion along the X axis.
      * @param zInput The controller input correlated to motion along the Z axis.
      * @param rotationalInput The controller input correlated to rotational motion.
-     * @param fieldCentric Whether or no the robot should drive in a field centric manner.
      */
-    public void driveRobotWithControllerInputs(double xInput, double zInput, double rotationalInput, boolean fieldCentric) {
+    public void driveRobotWithControllerInputs(double xInput, double zInput, double rotationalInput) {
 
         // Keep track of the robot's velocity in each direction.
         double xVelocityMeters = xInput;
@@ -173,6 +174,32 @@ public class Drivetrain implements Subsystem{
 
         // Drive the robot in the desired direction using the adjusted values.
         driveRobotWithMotorPower(xVelocityMeters, zVelocityMeters, rotationalInput);
+    }
+
+    /**
+     * Toggles the robot's field centric state. E.g. if the robot is currently driving in a field centric
+     * manner, it will now drive in a robot centric manner.
+     */
+    public void toggleFieldCentricDrive() {
+        fieldCentric = !fieldCentric;
+    }
+
+    /**
+     * Sets the robot's field centric state to the specified state.
+     *
+     * @param fieldCentricDrive Whether or not the robot will drive in a field centric manner.
+     */
+    public void setFieldCentricDrive(boolean fieldCentricDrive) {
+        this.fieldCentric = fieldCentricDrive;
+    }
+
+    /**
+     * Returns whether or not the robot is driving in a field centric manner.
+     *
+     * @return Whether or not the robot is driving in a field centric manner.
+     */
+    public boolean getFieldCentricState() {
+        return fieldCentric;
     }
 
     @Override

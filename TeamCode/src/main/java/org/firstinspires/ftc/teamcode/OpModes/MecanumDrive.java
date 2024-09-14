@@ -44,6 +44,11 @@ public class MecanumDrive extends LinearOpMode {
                 robotHardware.drivetrain.toggleFieldCentricDrive();
             }
 
+            // Toggle whether or not the robot will drive using velocity.
+            if (currentGamepad.start && !previousGamepad.start) {
+                robotHardware.drivetrain.toggleVelocityDrive();
+            }
+
             // Drive the robot based on user inputs.
             robotHardware.drivetrain.driveRobotWithControllerInputs(currentGamepad.left_stick_x,
                     currentGamepad.left_stick_y, currentGamepad.right_stick_x);

@@ -1,6 +1,8 @@
-package org.firstinspires.ftc.teamcode.Utility;
+package org.firstinspires.ftc.teamcode.Utility.Storage;
 
 import android.os.Environment;
+
+import org.firstinspires.ftc.teamcode.Utility.Constants.FileManagementConstants;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -23,15 +25,12 @@ public class FileEx {
      */
     public FileEx(String fileName) {
 
-        // Get the path to the directory where all external data will be stored.
-        String directoryPath = Environment.getExternalStorageDirectory().getPath() + "/" + directoryName;
-
         // Create a file object for the directory.
-        File directory = new File(directoryPath);
+        File directory = new File(FileManagementConstants.DIRECTORY_PATH);
         directory.mkdir();
 
         // Set the variable filePath equal to the path of the file.
-        filePath = directoryPath + "/" + fileName;
+        filePath = FileManagementConstants.DIRECTORY_PATH + "/" + fileName;
 
         // Get all of the data from the file. Then, if there isn't any data create a new hashmap.
         fileData = getAllData();

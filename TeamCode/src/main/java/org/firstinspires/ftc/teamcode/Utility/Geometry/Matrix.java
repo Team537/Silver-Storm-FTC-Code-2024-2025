@@ -1,7 +1,5 @@
 package org.firstinspires.ftc.teamcode.Utility.Geometry;
 
-import androidx.annotation.NonNull;
-
 import java.util.stream.IntStream;
 
 public class Matrix {
@@ -76,6 +74,121 @@ public class Matrix {
     }
 
     /**
+     * Adds the values from the provided Matrix to this matrix and returns the resulting Matrix.
+     *
+     * @param otherMatrix The Matrix whose values will be added to this Matrix.
+     * @return A new Matrix representing the sum of this Matrix and the provided Matrix.
+     * @throws IllegalArgumentException If the provided Matrix does not have the same number of
+     *                                  rows and columns as this Matrix.
+     */
+    public Matrix addMatrix(Matrix otherMatrix) {
+
+        // Ensure that both matrices have the same number of rows and columns.
+        if (this.ROWS != otherMatrix.getRows() || this.COLUMNS != otherMatrix.getColumns()) {
+            throw new IllegalArgumentException("Cannot add matrices that do not have the same number of rows and columns");
+        }
+
+        // Create a 2D array to store the values of the resulting Matrix.
+        double[][] resultMatrixValues = new double[this.ROWS][this.COLUMNS];
+
+        // Loop through each row and column to calculate the sum.
+        for (int i = 0; i < this.ROWS * this.COLUMNS; i++) {
+            int row = i / this.COLUMNS; // Calculate the row index.
+            int column = i % this.COLUMNS; // Calculate the column index.
+
+            // Calculate the sum of this Matrix's value and the other Matrix's value.
+            resultMatrixValues[row][column] = this.matrixValues[row][column] +
+                    otherMatrix.getValueAt(row, column);
+        }
+
+        // Return a new Matrix containing the resulting values.
+        return new Matrix(resultMatrixValues);
+    }
+
+    /**
+     * Subtracts the values of the provided Matrix from this Matrix and returns the resulting Matrix.
+     *
+     * @param otherMatrix The Matrix whose values will be subtracted from this Matrix's values.
+     * @return A new Matrix containing the values of this Matrix subtracted by the values of the
+     *         provided Matrix.
+     * @throws IllegalArgumentException If the provided Matrix does not have the same number of
+     *                                  rows and columns as this Matrix.
+     */
+    public Matrix subtractMatrix(Matrix otherMatrix) {
+
+        // Ensure that both matrices have the same number of rows and columns.
+        if (this.ROWS != otherMatrix.getRows() || this.COLUMNS != otherMatrix.getColumns()) {
+            throw new IllegalArgumentException("Cannot add matrices that do not have the same number of rows and columns");
+        }
+
+        // Create a 2D array to store the values of the resulting matrix.
+        double[][] resultMatrixValues = new double[this.ROWS][this.COLUMNS];
+
+        // Loop through each row and column and calculate a Matrix containing this Matrix's values
+        // subtracted by the prvodied Matrix's values.
+        for (int i = 0; i < this.ROWS * this.COLUMNS; i++) {
+            int row = i / this.COLUMNS; // Calculate the row index.
+            int column = i % this.COLUMNS; // Calculate the column index.
+
+            // Subtracts the value of the other Matrix from this Matrix's value at the calculated
+            // row and column.
+            resultMatrixValues[row][column] = this.matrixValues[row][column] -
+                    otherMatrix.getValueAt(row, column);
+        }
+
+        // Return a new Matrix containing the resulting values.
+        return new Matrix(resultMatrixValues);
+    }
+
+    /**
+     * Multiplies every value of this Matrix by the provided value and returns the result as a new Matrix.
+     *
+     * @param multiplier The value that each Matrix element will be multiplied by.
+     * @return A new Matrix representing the product of this matrix and the given multiplier.
+     */
+    public Matrix multiplyBy(double multiplier) {
+
+        // Create a 2D array to store the values of the resulting Matrix.
+        double[][] resultMatrixValues = new double[this.ROWS][this.COLUMNS];
+
+        // Loop through each row and column and multiply each value by the provided multiplier.
+        for (int i = 0; i < this.ROWS * this.COLUMNS; i++) {
+            int row = i / this.COLUMNS; // Calculate the row index.
+            int column = i % this.COLUMNS; // Calculate the column index.
+
+            // Multiply the value at the calculated column and row by the given multiplier.
+            resultMatrixValues[row][column] = this.matrixValues[row][column] * multiplier;
+        }
+
+        // Return a new Matrix containing the resulting values.
+        return new Matrix(resultMatrixValues);
+    }
+
+    /**
+     * Divides every value of this Matrix by the provided divisor and returns the result as a new Matrix.
+     *
+     * @param divisor The value that each Matrix element will be divided by.
+     * @return A new Matrix representing the product of this matrix and the given multiplier.
+     */
+    public Matrix divideBy(double divisor) {
+
+        // Create a 2D array to store the values of the resulting Matrix.
+        double[][] resultMatrixValues = new double[this.ROWS][this.COLUMNS];
+
+        // Loop through each row and column and divide each value by the provided divisor.
+        for (int i = 0; i < this.ROWS * this.COLUMNS; i++) {
+            int row = i / this.COLUMNS; // Calculate the row index.
+            int column = i % this.COLUMNS; // Calculate the column index.
+
+            // Divide the value at the calculated column and row by the given divisor.
+            resultMatrixValues[row][column] = this.matrixValues[row][column] / divisor;
+        }
+
+        // Return a new Matrix containing the resulting values.
+        return new Matrix(resultMatrixValues);
+    }
+
+    /**
      * Multiples this Matrix by the provided Matrix and returns the result as a new Matrix.
      *
      * @param otherMatrix The Matrix who's values will be multiplied with this Matrix's values.
@@ -102,7 +215,7 @@ public class Matrix {
             }
         }
 
-        // Return a new matrix containing the resulting values.
+        // Return a new Matrix containing the resulting values.
         return new Matrix(resultMatrixValues);
     }
 
@@ -130,25 +243,25 @@ public class Matrix {
     }
 
     /**
-     * Returns the number of rows present within this matrix.
+     * Returns the number of rows present within this Matrix.
      *
-     * @return The number of rows present within this matrix.
+     * @return The number of rows present within this Matrix.
      */
     public int getRows() {
         return this.ROWS;
     }
 
     /**
-     * Returns the number of columns present within this matrix.
+     * Returns the number of columns present within this Matrix.
      *
-     * @return The number of columns present within this matrix.
+     * @return The number of columns present within this Matrix.
      */
     public int getColumns() {
         return this.COLUMNS;
     }
 
     /**
-     * Returns an array containing all values within this matrix's rowNum row.
+     * Returns an array containing all values within this Matrix's rowNum row.
      *
      * @param rowNum The number of the row you wish to access.
      * @return An array containing all values within this matrix's rowNum row.
@@ -161,15 +274,15 @@ public class Matrix {
             throw new IndexOutOfBoundsException("Specified row of matrix out of bounds.");
         }
 
-        // Return the specified row.
+        // Return an array containing all values in the specified row.
         return this.matrixValues[rowNum];
     }
 
     /**
-     * Returns an array containing all values within this matrix's columnNum column.
+     * Returns an array containing all values within this Matrix's columnNum column.
      *
      * @param columnNum The number of the column you wish to access.
-     * @return An array containing all values within this matrix's columnNum column.
+     * @return An array containing all values within this Matrix's columnNum column.
      * @throws IndexOutOfBoundsException If the requested column does not exist.
      */
     public double[] getColumn(int columnNum) {
@@ -179,26 +292,47 @@ public class Matrix {
             throw new IndexOutOfBoundsException("Specified column of matrix out of bounds.");
         }
 
-        // Loop through all rows in this matrix and grab the element located in the specified column.
+        // Loop through all rows in this Matrix and grab the element located in the specified column.
         double[] columValues = new double[this.ROWS];
         for (int row = 0; row < this.ROWS; row++) {
             columValues[row] = this.matrixValues[row][columnNum];
         }
 
-        // Return an array containing all elements within
+        // Return an array containing all elements within the specified column.
         return columValues;
     }
 
+    /**
+     * Returns the value of this Matrix in the specified row and column.
+     *
+     * @param row The row the value is in.
+     * @param column The column the value is in.
+     * @return The value of this Matrix in the specified row and column.
+     * @throws IndexOutOfBoundsException If this Matrix does not have the specified number of columns
+     *                                   and/or rows.
+     */
+    public double getValueAt(int row, int column) {
+
+        // Make sure that this Matrix has the specified number of rows and columns.
+        if (row >= this.ROWS || column >= this.COLUMNS) {
+            throw new IndexOutOfBoundsException("Requested element out of range, matrix " +
+                    "doesn't have the specified number of rows and columns.");
+        }
+
+        // Return the value at the specified row and column.
+        return this.matrixValues[row][column];
+    }
 
     /**
-     * Converts this matrix into a string. The resulting output is similar to standard matrix notation.
+     * Converts this matrix into a string. The resulting output is similar to standard Matrix notation.
+     *
      * @return This matrix, as a string.
      */
     @Override
     public String toString() {
 
         // Loop through all of the rows and columns of this Matrix and format the string in a
-        // similar fasion to standard matrix notation.
+        // similar fashion to standard Matrix notation.
         StringBuilder stringBuilder = new StringBuilder();
         for (int rowNumber = 0; rowNumber < this.ROWS; rowNumber++) {
 
@@ -221,7 +355,7 @@ public class Matrix {
             stringBuilder.append("|\n");
         }
 
-        // Return the matrix in string form.
+        // Return the Matrix in string form.
         return stringBuilder.toString();
     }
 }

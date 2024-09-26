@@ -60,7 +60,7 @@ public class Drivetrain implements Subsystem{
 
         // Setup the drive motors.
         frontRightDriveMotor = opModeHardwareMap.get(DcMotorEx.class, "frontRightDriveMotor");
-        frontLeftDriveMotor = opModeHardwareMap.get(DcMotorEx.class, "frontRightDriveMotor");
+        frontLeftDriveMotor = opModeHardwareMap.get(DcMotorEx.class, "frontLeftDriveMotor");
         backRightDriveMotor = opModeHardwareMap.get(DcMotorEx.class, "backRightDriveMotor");
         backLeftDriveMotor = opModeHardwareMap.get(DcMotorEx.class, "backLeftDriveMotor");
 

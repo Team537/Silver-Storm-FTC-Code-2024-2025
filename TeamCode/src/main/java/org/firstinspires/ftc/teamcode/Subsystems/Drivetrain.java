@@ -268,6 +268,24 @@ public class Drivetrain implements Subsystem{
     }
 
     /**
+     * Returns an array containing the current velocity state of each of this robot's motors.
+     *
+     * @return An array containing the velocity of each motor. Ordered as follows: FR, FL, BL, BR
+     */
+    public double[] getVelocityState() {
+
+        // Create a new array to store the velocity of each motor.
+        double[] velocityState = new double[4];
+        velocityState[0] = this.frontRightDriveMotor.getVelocity();
+        velocityState[1] = this.frontLeftDriveMotor.getVelocity();
+        velocityState[2] = this.backLeftDriveMotor.getVelocity();
+        velocityState[3] = this.backRightDriveMotor.getVelocity();
+
+        // Return the velocities of the motors.
+        return velocityState;
+    }
+
+    /**
      * Returns whether or not the robot is driving in a field centric manner.
      *
      * @return Whether or not the robot is driving in a field centric manner.

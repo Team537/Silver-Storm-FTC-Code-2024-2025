@@ -273,6 +273,29 @@ public class Vector {
     }
 
     /**
+     * Sets the value at the specified index in the Vector to the given value.
+     * The index must be valid and correspond to a pre-filled position in the Vector.
+     *
+     * @param index The index of the element you wish to replace.
+     * @param value The new value to be assigned at the specified index.
+     * @throws IndexOutOfBoundsException If the given index is out of bounds (greater than or equal to the number of elements in this Vector).
+     */
+    public void setValueAt(int index, double value) {
+
+        // Ensure there is a value at the specified index.
+        if (index >= this.SIZE || index < 0) {
+            throw new IndexOutOfBoundsException("Cannot set element at position: " + index +
+                    " - Invalid position.");
+        }
+
+        // Set the value at the specified index to the given value.
+        this.VALUES[index] = value;
+
+        // Magnitude needs to be recalculated, since the values have changed.
+        this.isMagnitudeCalculated = false;
+    }
+
+    /**
      * Returns the value at the specified index.
      *
      * @param index The index of the value that will be returned.
@@ -282,7 +305,7 @@ public class Vector {
     public double getValueAt(int index) {
 
         // Make sure the element exists.
-        if (index >= this.SIZE) {
+        if (index >= this.SIZE || index < 0) {
             throw new IndexOutOfBoundsException("Cannot obtain element at index " + index +
                     " in vector that only contains " + this.SIZE + " values.");
         }

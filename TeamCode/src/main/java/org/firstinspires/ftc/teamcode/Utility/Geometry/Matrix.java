@@ -211,7 +211,7 @@ public class Matrix {
         // Preform matrix multiplication.
         for (int rowNumber = 0; rowNumber < this.ROWS; rowNumber++) {
             for (int columnNumber = 0; columnNumber < otherMatrix.getColumns(); columnNumber++) {
-                resultMatrixValues[rowNumber][columnNumber] = calculateDotProduct(this.matrixValues[rowNumber], otherMatrix.getColumn(columnNumber));
+                resultMatrixValues[rowNumber][columnNumber] = calculateDotProductOfVectors(this.matrixValues[rowNumber], otherMatrix.getColumn(columnNumber));
             }
         }
 
@@ -228,7 +228,7 @@ public class Matrix {
      * @return The dot-product of the two vectors.
      * @throws IllegalArgumentException If the vectors are null or aren't the same length.
      */
-    private double calculateDotProduct(double[] vectorA, double[] vectorB) {
+    private double calculateDotProductOfVectors(double[] vectorA, double[] vectorB) {
 
         // Make sure the input vectors aren't null and are of the same length.
         if (vectorA == null || vectorB == null || vectorA.length != vectorB.length) {
@@ -240,6 +240,34 @@ public class Matrix {
                 .parallel() // Run processes across multiple threads to calculate the result quicker.
                 .mapToDouble(i -> vectorA[i] * vectorB[i]) // Preform a method on each element of the stream range.
                 .sum(); // Return the sum of all elements in the stream.
+    }
+
+    /**
+     * Calculates the dot product between this Matrix and the given Matrix.
+     * Both matrices must have the same dimensions.
+     *
+     * @param otherMatrix The matrix that will be used to compute the dot product.
+     * @return The dot product between this Matrix and the given Matrix.
+     * @throws IllegalArgumentException If both matrices do not have the same dimensions.
+     */
+    public double calculateDotProduct(Matrix otherMatrix) {
+
+        // Make sure we can multiply the two matrices together.
+        // If we cannot preform the multiplication operation, output an error to inform the programmer / user.
+        if (this.COLUMNS != otherMatrix.getColumns() || this.ROWS != otherMatrix.getRows()) {
+            throw new IllegalArgumentException("Cannot compute the dot product between two matrices with different dimensions");
+        }
+
+        // Keep track of the sum of the two matrices.
+        double dotProduct = 0;
+        for (int rowNumber = 0; rowNumber < this.ROWS; rowNumber++) {
+            for (int columnNumber = 0; columnNumber < otherMatrix.getColumns(); columnNumber++) {
+                dotProduct += this.matrixValues[rowNumber][columnNumber] * otherMatrix.getValueAt(rowNumber, columnNumber);
+            }
+        }
+
+        // Return the dot product of the two matrices.
+        return dotProduct;
     }
 
     /**
@@ -261,41 +289,113 @@ public class Matrix {
     }
 
     /**
+     * Replaces the values in the specified column with the given values.
+     *
+     * @param column The index of the colum whose values you wish to override.
+     * @param columnValues The array of new values to be placed in the specified column.
+     * @throws IndexOutOfBoundsException If the specified column index is invalid (i.e., does not exist).
+     * @throws IllegalArgumentException If the number of values in columnValues is greater than the number of rows in this matrix.
+     */
+    public void setColumn(int column, double[] columnValues) {
+
+        // Ensure the specified column index is valid.
+        if (column >= this.COLUMNS || column < 0) {
+            throw new IndexOutOfBoundsException("Cannot set values for a non-existent column: " + column);
+        }
+
+        // Ensure the rowValues array does not exceed the matrix's row count.
+        if (columnValues.length >= this.ROWS) {
+            throw new IllegalArgumentException("Attempted to set column with " + columnValues.length +
+                    " values, but the number of rows is " + this.ROWS + ".");
+        }
+
+        // Set all values in the specified column.
+        for (int row = 0; row < this.ROWS; row++) {
+            this.matrixValues[row][column] = columnValues[row];
+        }
+    }
+
+    /**
+     * Replaces the values in the specified row with the given values.
+     *
+     * @param row The index of the row whose values you wish to override.
+     * @param rowValues The array of new values to be placed in the specified row.
+     * @throws IndexOutOfBoundsException If the specified row index is invalid (i.e., does not exist).
+     * @throws IllegalArgumentException If the number of values in rowValues is greater than the number of columns in this matrix.
+     */
+    public void setRow(int row, double[] rowValues) {
+
+        // Ensure the specified row index is valid.
+        if (row >= this.ROWS || row < 0) {
+            throw new IndexOutOfBoundsException("Cannot set values for a non-existent row: " + row);
+        }
+
+        // Ensure the rowValues array does not exceed the matrix's column count.
+        if (rowValues.length >= this.COLUMNS) {
+            throw new IllegalArgumentException("Attempted to set row with " + rowValues.length +
+                    " values, but the number of columns is " + this.COLUMNS + ".");
+        }
+
+        // Set the values of the specified row.
+        this.matrixValues[row] = rowValues;
+    }
+
+    /**
+     * Sets the value at the specified row and column indices in the matrix.
+     *
+     * @param row The index of the row where the value will be set.
+     * @param column The index of the column where the value will be set.
+     * @param newValue The new value to be assigned at the specified position.
+     * @throws IndexOutOfBoundsException If the specified row or column index is invalid (i.e., does not exist).
+     */
+    public void setValueAt(int row, int column, double newValue) {
+
+        // Ensure that the specified row and column indices are valid.
+        if (row >= this.ROWS || column >= this.COLUMNS) {
+            throw new IndexOutOfBoundsException("Cannot set value at position (" + row + ", " + column +
+                    ") - invalid row or column index.");
+        }
+
+        // Set the value at the specified location.
+        this.matrixValues[row][column] = newValue;
+    }
+
+    /**
      * Returns an array containing all values within this Matrix's rowNum row.
      *
-     * @param rowNum The number of the row you wish to access.
+     * @param row The row number you wish to access.
      * @return An array containing all values within this matrix's rowNum row.
      * @throws IndexOutOfBoundsException If the requested row does not exist.
      */
-    public double[] getRow(int rowNum) {
+    public double[] getRow(int row) {
 
         // Make sure the specified row exists.
-        if (rowNum >= this.ROWS) {
+        if (row >= this.ROWS || row < 0) {
             throw new IndexOutOfBoundsException("Specified row of matrix out of bounds.");
         }
 
         // Return an array containing all values in the specified row.
-        return this.matrixValues[rowNum];
+        return this.matrixValues[row];
     }
 
     /**
      * Returns an array containing all values within this Matrix's columnNum column.
      *
-     * @param columnNum The number of the column you wish to access.
+     * @param column The column number you wish to access.
      * @return An array containing all values within this Matrix's columnNum column.
      * @throws IndexOutOfBoundsException If the requested column does not exist.
      */
-    public double[] getColumn(int columnNum) {
+    public double[] getColumn(int column) {
 
         // Make sure the specified column exists.
-        if (columnNum >= this.COLUMNS) {
+        if (column >= this.COLUMNS || column < 0) {
             throw new IndexOutOfBoundsException("Specified column of matrix out of bounds.");
         }
 
         // Loop through all rows in this Matrix and grab the element located in the specified column.
         double[] columValues = new double[this.ROWS];
         for (int row = 0; row < this.ROWS; row++) {
-            columValues[row] = this.matrixValues[row][columnNum];
+            columValues[row] = this.matrixValues[row][column];
         }
 
         // Return an array containing all elements within the specified column.
@@ -314,7 +414,7 @@ public class Matrix {
     public double getValueAt(int row, int column) {
 
         // Make sure that this Matrix has the specified number of rows and columns.
-        if (row >= this.ROWS || column >= this.COLUMNS) {
+        if (row >= this.ROWS || column >= this.COLUMNS || row < 0 || column < 0) {
             throw new IndexOutOfBoundsException("Requested element out of range, matrix " +
                     "doesn't have the specified number of rows and columns.");
         }

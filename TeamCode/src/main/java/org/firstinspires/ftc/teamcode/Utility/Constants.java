@@ -23,4 +23,14 @@ public final class Constants {
         // Get the path to the directory where all external data will be stored.
         public static String DIRECTORY_PATH = Environment.getExternalStorageDirectory().getPath() + "/" + DIRECTORY_NAME;
     }
+
+    public static final class VisionConstants {
+
+        // Camera Names
+        public static final String TEST_CAMERA_NAME = "Webcam";
+        // Camera Dimensions
+        public static final int CAMERA_WIDTH_PIXELS = 320; // 640
+        public static final int CAMERA_HEIGHT_PIXELS = 240; // 480
+        public static final int FOCAL_LENGTH_PIXELS = 720; // Sourced from amazon; may not be perfectly accurate.
+    }
 }

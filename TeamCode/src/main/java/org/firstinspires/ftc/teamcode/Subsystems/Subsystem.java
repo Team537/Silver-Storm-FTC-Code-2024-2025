@@ -6,6 +6,6 @@ import org.firstinspires.ftc.robotcore.external.Telemetry;
 
 public interface Subsystem {
 
-    void init(HardwareMap opModeHardwareMap, Telemetry opModeTelemetry);
+    void init(HardwareMap hardwareMap, Telemetry telemetry);
     void periodic();
 }

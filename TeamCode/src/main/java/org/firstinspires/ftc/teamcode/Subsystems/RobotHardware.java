@@ -15,17 +15,17 @@ public class RobotHardware implements Subsystem {
     private Telemetry telemetry;
 
     @Override
-    public void init(HardwareMap opModeHardwareMap, Telemetry opModeTelemetry) {
+    public void init(HardwareMap hardwareMap, Telemetry telemetry) {
 
         // Setup subsystems
         this.drivetrain = new Drivetrain();
-        this.drivetrain.init(opModeHardwareMap, opModeTelemetry);
+        this.drivetrain.init(hardwareMap, telemetry);
 
         this.computerVision = new ComputerVision();
-        computerVision.init(opModeHardwareMap, opModeTelemetry);
+        computerVision.init(hardwareMap, telemetry);
 
         // Save the telemetry so that diagnostic data can be output.
-        this.telemetry = opModeTelemetry;
+        this.telemetry = telemetry;
     }
 
     @Override

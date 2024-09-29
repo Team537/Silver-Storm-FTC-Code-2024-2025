@@ -51,18 +51,35 @@ public class Drivetrain implements Subsystem{
     }
 
     /**
+     * Sets up the drivetrain so that it can function.
+     * @param hardwareMap The opMode's hardware map. This is required in order to gian access
+     *                          to the robot's hardware.
+     * @param telemetry The opMode's telemetry. This is required in order to output
+     *                        diagnostic / feedback information.
+     */
+    @Override
+    public void init(HardwareMap hardwareMap, Telemetry telemetry) {
+
+        // Setup the robot's hardware.
+        setupHardware(hardwareMap);
+
+        // Set the robot's position.
+        robotPosition = new Pose2d();
+    }
+
+    /**
      * Sets up the robot's hardware.
      *
-     * @param opModeHardwareMap The opMode's hardware map. This is required in order to gian access
+     * @param hardwareMap The opMode's hardware map. This is required in order to gian access
      *                          to the robot's hardware.
      */
-    private void setupHardware(@NonNull HardwareMap opModeHardwareMap) {
+    private void setupHardware(@NonNull HardwareMap hardwareMap) {
 
         // Setup the drive motors.
-        frontRightDriveMotor = opModeHardwareMap.get(DcMotorEx.class, "frontRightDriveMotor");
-        frontLeftDriveMotor = opModeHardwareMap.get(DcMotorEx.class, "frontLeftDriveMotor");
-        backRightDriveMotor = opModeHardwareMap.get(DcMotorEx.class, "backRightDriveMotor");
-        backLeftDriveMotor = opModeHardwareMap.get(DcMotorEx.class, "backLeftDriveMotor");
+        frontRightDriveMotor = hardwareMap.get(DcMotorEx.class, "frontRightDriveMotor");
+        frontLeftDriveMotor = hardwareMap.get(DcMotorEx.class, "frontLeftDriveMotor");
+        backRightDriveMotor = hardwareMap.get(DcMotorEx.class, "backRightDriveMotor");
+        backLeftDriveMotor = hardwareMap.get(DcMotorEx.class, "backLeftDriveMotor");
 
         // Setup the drive motors.
         frontRightDriveMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -96,25 +113,8 @@ public class Drivetrain implements Subsystem{
                 RevHubOrientationOnRobot.UsbFacingDirection.UP));
 
         // Initialize the IMU
-        imu = opModeHardwareMap.get(IMU.class, "imu");
+        imu = hardwareMap.get(IMU.class, "imu");
         imu.initialize(imuSettings);
-    }
-
-    /**
-     * Sets up the drivetrain so that it can function.
-     * @param opModeHardwareMap The opMode's hardware map. This is required in order to gian access
-     *                          to the robot's hardware.
-     * @param opModeTelemetry The opMode's telemetry. This is required in order to output
-     *                        diagnostic / feedback information.
-     */
-    @Override
-    public void init(HardwareMap opModeHardwareMap, Telemetry opModeTelemetry) {
-
-        // Setup the robot's hardware.
-        setupHardware(opModeHardwareMap);
-
-        // Set the robot's position.
-        robotPosition = new Pose2d();
     }
 
     /**

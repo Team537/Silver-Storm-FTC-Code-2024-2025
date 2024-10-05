@@ -304,24 +304,24 @@ public class GenericSamplePipeline extends OpenCvPipeline {
     }
 
     /**
+     * Sets the extrinsic camera matrix using the provided rotation and transformation matrices.
      *
-     * @param cameraRotationMatrix The camera's rotation relative to the robot's origin, as a Mat.
-     * @param cameraTransformationMatrix The camera's position relative to the robot's origin, as a Mat.
+     * @param cameraRotationMatrix A Mat representing the camera's rotation relative to the robot's origin.
+     * @param cameraTransformationMatrix A Mat representing the camera's position relative to the robot's origin.
      */
     public void setExtrinsicCameraMatrix(Mat cameraRotationMatrix, Mat cameraTransformationMatrix) {
 
-        // Initialize an empty matrix to store both the cameraTransformationMatrix and cameraRotationMatrix
+        // Initialize the extrinsic camera matrix with 3 rows and 4 columns.
         this.extrinsicCameraMatrix = new Mat(3, 4, CvType.CV_64FC1);
 
         /*
-         * Combine the cameraTransformationMatrix and cameraRotationMatrix matrices such that the result
-         * contains the values of the rotation matrix followed by the values of the transformation matrix.
-         * Then store the resulting matrix in the newly initialized extrinsicCameraMatrix matrix.
-         * The result will look something like the following: [r1, r2, r3, tx].
+         * Combine the camera rotation and transformation matrices into the extrinsic camera matrix.
+         * The resulting matrix will contain the rotation values followed by the translation values,
+         * structured as follows: [r1, r2, r3, tx].
          */
         Core.hconcat(List.of(cameraRotationMatrix, cameraTransformationMatrix), extrinsicCameraMatrix);
 
-        // The inverse of the camera projection matrix must be recalculated.
+        // Mark the camera projection matrix as needing recalculation after setting the extrinsic matrix.
         this.calculatedInvertedCameraProjectionMatrix = false;
     }
 
@@ -333,7 +333,7 @@ public class GenericSamplePipeline extends OpenCvPipeline {
      */
     public void setIntrinsicCameraMatrix(Mat intrinsicCameraMatrix) {
 
-        // Set the intrinsic camera matrix.
+        // Set this GenericSamplePipeline's intrinsic camera matrix.
         this.intrinsicCameraMatrix = intrinsicCameraMatrix;
 
         // The values required to remove distortion must be recalculated.
@@ -350,6 +350,8 @@ public class GenericSamplePipeline extends OpenCvPipeline {
      *                               correct lens distortion effects in captured images.
      */
     public void setDistortionCoefficients(Mat distortionCoefficients) {
+
+        // Set this GenericSamplePipeline's distortion coefficient matrix.
         this.distortionCoefficients = distortionCoefficients;
 
         // The values required to remove distortion must be recalculated.

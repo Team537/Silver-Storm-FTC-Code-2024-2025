@@ -16,7 +16,7 @@ import org.opencv.imgproc.Imgproc;
 import org.openftc.easyopencv.OpenCvPipeline;
 
 import java.util.ArrayList;
-import java.util.List;
+import com.sun.tools.javac.util.List;
 
 public class GenericSamplePipeline extends OpenCvPipeline {
 
@@ -26,14 +26,20 @@ public class GenericSamplePipeline extends OpenCvPipeline {
 
     // Storage
     private Size imageSize;
-    private Mat cameraMatrix;
+    private Mat intrinsicCameraMatrix;
     private Mat distortionCoefficients;
+    private Mat extrinsicCameraMatrix; // A matrix that contains the camera's rotation and translation from the robot's origin
+    private Mat invertedCameraProjectionMatrix;
+
+    private double cameraDistanceFromGroundMeters = 1; //TODO: Fill out field with actual value. Note: measured from robot origin to ground.
+
     private Mat mapX, mapY;
-    private Mat newCameraMatrix;
+    private Mat newIntrinsicCameraMatrix;
     private Rect regionOfInterest = new Rect();
 
     // Flags
     private boolean calculatedUndistortedImageValues = false;
+    private boolean calculatedInvertedCameraProjectionMatrix = false;
 
     /**
      * Creates a new GenericSamplePipeline that will process images of the given dimensions.
@@ -52,7 +58,7 @@ public class GenericSamplePipeline extends OpenCvPipeline {
         Mat outputFrame = inputFrame.clone();
 
         // If a valid camera matrix and distortion coefficient matrix were provided, remove distortion from the image.
-        if (cameraMatrix != null && distortionCoefficients != null) {
+        if (intrinsicCameraMatrix != null && distortionCoefficients != null) {
             outputFrame = undistortImage(outputFrame);
         }
 
@@ -63,7 +69,7 @@ public class GenericSamplePipeline extends OpenCvPipeline {
         }
 
         // Get contours and bounding boxes from the masked image.
-        List<MatOfPoint> contours = findContours(yellowMask);
+        ArrayList<MatOfPoint> contours = findContours(yellowMask);
         Rect[] boundingBoxes = extractBoundingBoxes(contours);
 
         // If at least one bounding box is found, process and return the updated frame.
@@ -89,20 +95,8 @@ public class GenericSamplePipeline extends OpenCvPipeline {
 
         // Check if the undistortion maps and optimal camera matrix have already been computed.
         if (!calculatedUndistortedImageValues) {
-
-            // Initialize undistortion and rectification transformation maps (mapX and mapY) using the original
-            // camera matrix and distortion coefficients. These maps are used to remap the pixels of the input frame.
-            Calib3d.initUndistortRectifyMap(cameraMatrix, distortionCoefficients, new Mat(), newCameraMatrix,
-                    imageSize, CvType.CV_32FC1, mapX, mapY);
-
-            // Calculate the optimal new camera matrix, adjusting the field of view while minimizing distortion.
-            // The regionOfInterest (ROI) defines the valid part of the undistorted image, eliminating any black borders
-            // introduced by the remapping process. This new camera matrix will be used for cropping the image.
-            newCameraMatrix = Calib3d.getOptimalNewCameraMatrix(cameraMatrix, distortionCoefficients,
-                    imageSize, 1, imageSize, regionOfInterest);
-
-            // Mark that the undistortion map values and new camera matrix have been calculated.
-            calculatedUndistortedImageValues = true;
+            newIntrinsicCameraMatrix = calculateUndistortionValues();
+            calculatedUndistortedImageValues = true; // Mark that the undistortion map values and new camera matrix have been calculated.
         }
 
         // Apply the remapping to the input frame using the precomputed mapX and mapY. This undistorts the image
@@ -113,6 +107,25 @@ public class GenericSamplePipeline extends OpenCvPipeline {
         // Crop the undistorted image to the valid region of interest (ROI), removing any black borders
         // around the edges, and return the final undistorted, cropped image.
         return new Mat(remappedImage, regionOfInterest);
+    }
+
+    /**
+     * Calculates all values required to undistort an image.
+     *
+     * @return Returns the new camera matrix for the undistorted image.
+     */
+    private Mat calculateUndistortionValues() {
+
+        // Initialize undistortion and rectification transformation maps (mapX and mapY) using the original
+        // camera matrix and distortion coefficients. These maps are used to remap the pixels of the input frame.
+        Calib3d.initUndistortRectifyMap(intrinsicCameraMatrix, distortionCoefficients, new Mat(), newIntrinsicCameraMatrix,
+                imageSize, CvType.CV_32FC1, mapX, mapY);
+
+        // Calculate and return the optimal new camera matrix, adjusting the field of view while minimizing distortion.
+        // The regionOfInterest (ROI) defines the valid part of the undistorted image, eliminating any black borders
+        // introduced by the remapping process. This new camera matrix will be used for cropping the image.
+        return Calib3d.getOptimalNewCameraMatrix(intrinsicCameraMatrix, distortionCoefficients,
+                imageSize, 1, imageSize, regionOfInterest);
     }
 
     /**
@@ -151,14 +164,15 @@ public class GenericSamplePipeline extends OpenCvPipeline {
      * @param mask The mask where contours will be detected.
      * @return A list of contours found in the mask.
      */
-    private List<MatOfPoint> findContours(Mat mask) {
+    private ArrayList<MatOfPoint> findContours(Mat mask) {
 
         // Detect edges in the mask using the Canny edge detector.
         Mat edges = new Mat();
         Imgproc.Canny(mask, edges, 400, 500);
 
         // Find contours from the detected edges.
-        List<MatOfPoint> contours = new ArrayList<>();
+
+        ArrayList<MatOfPoint> contours = new ArrayList<>();
         Mat hierarchy = new Mat();
         Imgproc.findContours(edges, contours, hierarchy, Imgproc.RETR_TREE, Imgproc.CHAIN_APPROX_SIMPLE);
 
@@ -171,7 +185,7 @@ public class GenericSamplePipeline extends OpenCvPipeline {
      * @param contours A list of contours representing detected objects.
      * @return An array of bounding rectangles around each contour.
      */
-    private Rect[] extractBoundingBoxes(List<MatOfPoint> contours) {
+    private Rect[] extractBoundingBoxes(ArrayList<MatOfPoint> contours) {
 
         MatOfPoint2f[] approximatedContours = new MatOfPoint2f[contours.size()];
         Rect[] boundingBoxes = new Rect[contours.size()];
@@ -204,22 +218,129 @@ public class GenericSamplePipeline extends OpenCvPipeline {
             // Place a label above the detected object.
             Point labelPosition = new Point(box.x, box.y);
             Imgproc.putText(outputFrame, "Detected Object", labelPosition, Imgproc.FONT_HERSHEY_COMPLEX, 1, new Scalar(196, 85, 8));
+
+            // Attempt to estimate the 3D position of the detected object.
+            if (newIntrinsicCameraMatrix != null && extrinsicCameraMatrix != null) {
+                Mat object3DPosition = estimate3DPosition(box);
+                Imgproc.putText(outputFrame, "(" + object3DPosition.get(0, 0)[0] + "," +
+                        object3DPosition.get(1, 0)[0] + "," + object3DPosition.get(2, 0)[0] +
+                        ")", labelPosition, Imgproc.FONT_HERSHEY_COMPLEX, 1, new Scalar(196, 85, 8));
+            }
         }
     }
 
     /**
-     * Sets the camera matrix used for image calibration.
+     * Estimates the given detected object's position in 3D space, assuming that the object is on the floor.
      *
-     * @param cameraMatrix A 3x3 matrix representing the camera's intrinsic parameters,
+     * @param detectedObject The bounding box around the detected object, as a Rect.
+     * @return A new 3x1 matrix containing an estimate of the 3D position of the detected object with
+     *         values in the following order: X, Y, Z
+     */
+    private Mat estimate3DPosition(Rect detectedObject) {
+
+        // Store the pixel coordinates of the detected object in an array.
+        double[] objectPixelCoordinateValues = new double[] {
+                detectedObject.x,
+                detectedObject.y + detectedObject.height, // Y coordinate from the bottom of the bounding box
+                1
+        };
+
+        // Store the pixel coordinates of the detected object in a new Mat object.
+        Mat objectPixelCoordinates = new Mat(3, 1, CvType.CV_64FC1);
+        objectPixelCoordinates.put(0, 0, objectPixelCoordinateValues);
+
+        // Estimate the scaling factor (Z value or depth)
+        double scalingFactor = estimateScalingFactor(objectPixelCoordinates.get(1, 0)[0]);
+
+        // Scale the pixel coordinates (u, v, 1) by the scaling factor (Z value)
+        Mat scaledObjectPixelCoordinates = new Mat();
+        Core.multiply(objectPixelCoordinates, new Scalar(scalingFactor), scaledObjectPixelCoordinates);
+
+        // If the inverted camera projection matrix hasn't been calculated, then calculate it.
+        if (!calculatedInvertedCameraProjectionMatrix) {
+            invertedCameraProjectionMatrix = calculateInvertedCameraProjectionMatrix();
+            calculatedInvertedCameraProjectionMatrix = true; // The inverted camera projection matrix has been calculated.
+        }
+
+        // Now we transform the scaled 2D pixel coordinates into 3D world coordinates
+        Mat objectWorldCoordinates = new Mat();
+        Core.gemm(invertedCameraProjectionMatrix, scaledObjectPixelCoordinates, 1, new Mat(), 0, objectWorldCoordinates);
+
+        // Return the object's estimated 3D position, as a new matrix.
+        return objectWorldCoordinates; // 3x1 matrix containing [X, Y, Z]
+    }
+
+    /**
+     * Estimates the scaling factor (Z value or depth) based on the object's Y pixel coordinate.
+     *
+     * @param objectYPixelCoordinate The Y pixel coordinate of the detected object.
+     * @return The estimated scaling factor.
+     */
+    private double estimateScalingFactor(double objectYPixelCoordinate) {
+        double yDistanceFromCamera = cameraDistanceFromGroundMeters; // Known height of the camera above the ground
+        double focalLengthY = newIntrinsicCameraMatrix.get(1, 1)[0]; // fy from the intrinsic camera matrix
+        double principlePointY = newIntrinsicCameraMatrix.get(1, 2)[0]; // cy from the intrinsic camera matrix
+
+        return (focalLengthY * yDistanceFromCamera) / (objectYPixelCoordinate - principlePointY);
+    }
+
+    /**
+     * Calculates the inverted camera projection matrix by combining intrinsic and extrinsic matrices.
+     *
+     * @return The calculated inverted camera projection matrix.
+     */
+    private Mat calculateInvertedCameraProjectionMatrix() {
+
+        // Calculate the combined projection matrix from the intrinsic and extrinsic matrices
+        Mat cameraProjectionMatrix = new Mat();
+        Core.gemm(extrinsicCameraMatrix, newIntrinsicCameraMatrix, 1, new Mat(), 0, cameraProjectionMatrix);
+
+        // Invert the camera's projection matrix
+        Mat invertedMatrix = new Mat();
+        Core.invert(cameraProjectionMatrix, invertedMatrix);
+
+        // Return the inverted camera projection matrix
+        return invertedMatrix;
+    }
+
+    /**
+     *
+     * @param cameraRotationMatrix The camera's rotation relative to the robot's origin, as a Mat.
+     * @param cameraTransformationMatrix The camera's position relative to the robot's origin, as a Mat.
+     */
+    public void setExtrinsicCameraMatrix(Mat cameraRotationMatrix, Mat cameraTransformationMatrix) {
+
+        // Initialize an empty matrix to store both the cameraTransformationMatrix and cameraRotationMatrix
+        this.extrinsicCameraMatrix = new Mat(3, 4, CvType.CV_64FC1);
+
+        /*
+         * Combine the cameraTransformationMatrix and cameraRotationMatrix matrices such that the result
+         * contains the values of the rotation matrix followed by the values of the transformation matrix.
+         * Then store the resulting matrix in the newly initialized extrinsicCameraMatrix matrix.
+         * The result will look something like the following: [r1, r2, r3, tx].
+         */
+        Core.hconcat(List.of(cameraRotationMatrix, cameraTransformationMatrix), extrinsicCameraMatrix);
+
+        // The inverse of the camera projection matrix must be recalculated.
+        this.calculatedInvertedCameraProjectionMatrix = false;
+    }
+
+    /**
+     * Sets the intrinsic camera matrix for this pipeline.
+     *
+     * @param intrinsicCameraMatrix A 3x3 matrix representing the camera's intrinsic parameters,
      *                     including focal lengths and optical center.
      */
-    public void setCameraMatrix(Mat cameraMatrix) {
+    public void setIntrinsicCameraMatrix(Mat intrinsicCameraMatrix) {
+
+        // Set the intrinsic camera matrix.
+        this.intrinsicCameraMatrix = intrinsicCameraMatrix;
 
         // The values required to remove distortion must be recalculated.
-        this.cameraMatrix = cameraMatrix;
+        this.calculatedUndistortedImageValues = false;
 
-        // The values required to remove distortion must be recalculated.
-        calculatedUndistortedImageValues = false;
+        // The inverse of the camera projection matrix must be recalculated.
+        this.calculatedInvertedCameraProjectionMatrix = false;
     }
 
     /**
@@ -232,7 +353,12 @@ public class GenericSamplePipeline extends OpenCvPipeline {
         this.distortionCoefficients = distortionCoefficients;
 
         // The values required to remove distortion must be recalculated.
-        calculatedUndistortedImageValues = false;
+        this.calculatedUndistortedImageValues = false;
+
+        // The inverse of the camera projection matrix must be recalculated. While the distortion
+        // coefficients may not be directly used to estimate the 3D position of an object, they
+        // influence the newCameraMatrix, which is used during the position estimation process.
+        this.calculatedInvertedCameraProjectionMatrix = false;
     }
 
     @Override

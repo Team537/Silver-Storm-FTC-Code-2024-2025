@@ -5,6 +5,7 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.teamcode.Subsystems.Subsystem;
+import org.firstinspires.ftc.teamcode.Utility.Constants.VisionConstants.LogitechBrio100Constants;
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.openftc.easyopencv.OpenCvCamera;
 import org.openftc.easyopencv.OpenCvCameraFactory;
@@ -19,7 +20,8 @@ public class ComputerVision implements Subsystem {
     public void init(HardwareMap hardwareMap, Telemetry telemetry) {
 
         // Setup the neutralSamplePipeline
-        neutralSamplePipeline = new GenericSamplePipeline();
+        neutralSamplePipeline = new GenericSamplePipeline(LogitechBrio100Constants.STREAM_WIDTH_PIXELS,
+                LogitechBrio100Constants.STREAM_HEIGHT_PIXELS);
 
         // Setup the camera
         setupCamera(hardwareMap);
@@ -39,7 +41,8 @@ public class ComputerVision implements Subsystem {
         // Setup the camera and start streaming video feed to the driver station.
         camera.openCameraDevice(); // TODO: Figure out how to use the non-deprecated method.
         camera.setPipeline(neutralSamplePipeline);
-        camera.startStreaming(640, 480, OpenCvCameraRotation.UPRIGHT);
+        camera.startStreaming(LogitechBrio100Constants.STREAM_WIDTH_PIXELS,
+                LogitechBrio100Constants.STREAM_HEIGHT_PIXELS, OpenCvCameraRotation.UPRIGHT);
     }
 
     @Override

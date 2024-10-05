@@ -29,6 +29,15 @@ public final class Constants {
         public static String DIRECTORY_PATH = Environment.getExternalStorageDirectory().getPath() + "/" + DIRECTORY_NAME;
     }
 
+    public static final class SampleConstants {
+
+        // We use the higher value for height, since then the width on all sides will be assumed to be the same,
+        // making calculates more reliable.
+        public static final double WIDTH_IN_METERS = 0.089; // 3.5 🦅 (in)
+        public static final double HEIGHT_IN_METERS = 0.038; // 1.5 🦅 (in)
+        public static final double DIMENSION_ASPECT_RATIO = HEIGHT_IN_METERS / WIDTH_IN_METERS;
+        public static final double MAXIMUM_ALLOWED_DIMENSIONAL_ERROR = 0.1;
+    }
     public static final class VisionConstants {
 
         // Camera Names

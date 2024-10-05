@@ -2,7 +2,9 @@ package org.firstinspires.ftc.teamcode.Subsystems.Vision;
 
 import android.graphics.Canvas;
 
+import org.opencv.calib3d.Calib3d;
 import org.opencv.core.Core;
+import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint;
 import org.opencv.core.MatOfPoint2f;
@@ -18,16 +20,46 @@ import java.util.List;
 
 public class GenericSamplePipeline extends OpenCvPipeline {
 
-    private Scalar LOW_COLOR_RANGE = new Scalar(10,140,125);  //(10,200,165); //(15,199,200)
-    private Scalar HIGH_COLOR_RANGE = new Scalar(30,255,255); //(30,255,255); //(28,255,255)
+    // Settings
+    private final Scalar LOW_COLOR_RANGE = new Scalar(10,140,135);
+    private final Scalar HIGH_COLOR_RANGE = new Scalar(50,255,255);
+
+    // Storage
+    private Size imageSize;
+    private Mat cameraMatrix;
+    private Mat distortionCoefficients;
+    private Mat mapX, mapY;
+    private Mat newCameraMatrix;
+    private Rect regionOfInterest = new Rect();
+
+    // Flags
+    private boolean calculatedUndistortedImageValues = false;
+
+    /**
+     * Creates a new GenericSamplePipeline that will process images of the given dimensions.
+     *
+     * @param imageWidth The width of the processed image.
+     * @param imageHeight The height of the processed image.
+     */
+    public GenericSamplePipeline(int imageWidth, int imageHeight) {
+        this.imageSize = new Size(imageWidth, imageHeight);
+    }
 
     @Override
     public Mat processFrame(Mat inputFrame) {
 
+        // Clone the input frame to preserve the original.
+        Mat outputFrame = inputFrame.clone();
+
+        // If a valid camera matrix and distortion coefficient matrix were provided, remove distortion from the image.
+        if (cameraMatrix != null && distortionCoefficients != null) {
+            outputFrame = undistortImage(outputFrame);
+        }
+
         // Create a mask to isolate yellow regions in the image.
-        Mat yellowMask = createYellowMask(inputFrame);
+        Mat yellowMask = createYellowMask(outputFrame);
         if (yellowMask == null) {
-            return inputFrame; // If no mask is created, return the original input.
+            return outputFrame; // If no mask is created, return the original input.
         }
 
         // Get contours and bounding boxes from the masked image.
@@ -37,17 +69,50 @@ public class GenericSamplePipeline extends OpenCvPipeline {
         // If at least one bounding box is found, process and return the updated frame.
         if (boundingBoxes.length > 0) {
 
-            // Clone the input frame to preserve the original.
-            Mat outputFrame = inputFrame.clone();
-
             // Draw bounding boxes on detected objects.
             drawBoundingBoxes(outputFrame, boundingBoxes);
-
-            // Return the frame with bounding boxes.
-            return outputFrame;
-        } else {
-            return inputFrame; // No objects detected, return the original input.
         }
+
+        // Return the processed image.
+        return outputFrame;
+    }
+
+    /**
+     * Undistorts the input image frame using pre-calculated distortion and rectification maps.
+     * If the undistortion maps have not been calculated, they will be generated using the camera matrix
+     * and distortion coefficients, and then the image will be cropped to remove black borders.
+     *
+     * @param inputFrame The original distorted image frame that needs to be undistorted.
+     * @return A new Mat object representing the undistorted and cropped image.
+     */
+    private Mat undistortImage(Mat inputFrame) {
+
+        // Check if the undistortion maps and optimal camera matrix have already been computed.
+        if (!calculatedUndistortedImageValues) {
+
+            // Initialize undistortion and rectification transformation maps (mapX and mapY) using the original
+            // camera matrix and distortion coefficients. These maps are used to remap the pixels of the input frame.
+            Calib3d.initUndistortRectifyMap(cameraMatrix, distortionCoefficients, new Mat(), newCameraMatrix,
+                    imageSize, CvType.CV_32FC1, mapX, mapY);
+
+            // Calculate the optimal new camera matrix, adjusting the field of view while minimizing distortion.
+            // The regionOfInterest (ROI) defines the valid part of the undistorted image, eliminating any black borders
+            // introduced by the remapping process. This new camera matrix will be used for cropping the image.
+            newCameraMatrix = Calib3d.getOptimalNewCameraMatrix(cameraMatrix, distortionCoefficients,
+                    imageSize, 1, imageSize, regionOfInterest);
+
+            // Mark that the undistortion map values and new camera matrix have been calculated.
+            calculatedUndistortedImageValues = true;
+        }
+
+        // Apply the remapping to the input frame using the precomputed mapX and mapY. This undistorts the image
+        // by shifting pixels to their corrected positions based on the camera matrix and distortion coefficients.
+        Mat remappedImage = new Mat();
+        Imgproc.remap(inputFrame, remappedImage, mapX, mapY, Imgproc.INTER_LINEAR);
+
+        // Crop the undistorted image to the valid region of interest (ROI), removing any black borders
+        // around the edges, and return the final undistorted, cropped image.
+        return new Mat(remappedImage, regionOfInterest);
     }
 
     /**
@@ -75,6 +140,7 @@ public class GenericSamplePipeline extends OpenCvPipeline {
         Mat kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(5, 5));
         Imgproc.morphologyEx(thresholdImage, thresholdImage, Imgproc.MORPH_OPEN, kernel); // Remove noise.
         Imgproc.morphologyEx(thresholdImage, thresholdImage, Imgproc.MORPH_CLOSE, kernel); // Fill gaps.
+        Imgproc.morphologyEx(thresholdImage, thresholdImage, Imgproc.MORPH_OPEN, kernel); // Remove noise.
 
         return thresholdImage; // Return the processed mask image.
     }
@@ -89,7 +155,7 @@ public class GenericSamplePipeline extends OpenCvPipeline {
 
         // Detect edges in the mask using the Canny edge detector.
         Mat edges = new Mat();
-        Imgproc.Canny(mask, edges, 350, 500);
+        Imgproc.Canny(mask, edges, 400, 500);
 
         // Find contours from the detected edges.
         List<MatOfPoint> contours = new ArrayList<>();
@@ -132,12 +198,41 @@ public class GenericSamplePipeline extends OpenCvPipeline {
         for (Rect box : boundingBoxes) {
 
             // Draw a rectangle around each detected object.
-            Imgproc.rectangle(outputFrame, box, new Scalar(196, 85, 8), 3);
+            Imgproc.rectangle(outputFrame, box, new Scalar(255, 255, 255), 2);
+            Imgproc.rectangle(outputFrame, box, new Scalar(0, 0, 0), 1);
 
             // Place a label above the detected object.
             Point labelPosition = new Point(box.x, box.y);
-            Imgproc.putText(outputFrame, "Detected Object", labelPosition, Imgproc.FONT_HERSHEY_SIMPLEX, 1.5, new Scalar(196, 85, 8));
+            Imgproc.putText(outputFrame, "Detected Object", labelPosition, Imgproc.FONT_HERSHEY_COMPLEX, 1, new Scalar(196, 85, 8));
         }
+    }
+
+    /**
+     * Sets the camera matrix used for image calibration.
+     *
+     * @param cameraMatrix A 3x3 matrix representing the camera's intrinsic parameters,
+     *                     including focal lengths and optical center.
+     */
+    public void setCameraMatrix(Mat cameraMatrix) {
+
+        // The values required to remove distortion must be recalculated.
+        this.cameraMatrix = cameraMatrix;
+
+        // The values required to remove distortion must be recalculated.
+        calculatedUndistortedImageValues = false;
+    }
+
+    /**
+     * Sets the distortion coefficients for the camera.
+     *
+     * @param distortionCoefficients A matrix containing distortion coefficients that
+     *                               correct lens distortion effects in captured images.
+     */
+    public void setDistortionCoefficients(Mat distortionCoefficients) {
+        this.distortionCoefficients = distortionCoefficients;
+
+        // The values required to remove distortion must be recalculated.
+        calculatedUndistortedImageValues = false;
     }
 
     @Override

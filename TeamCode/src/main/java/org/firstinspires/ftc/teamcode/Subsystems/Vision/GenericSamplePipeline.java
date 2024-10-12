@@ -2,6 +2,9 @@ package org.firstinspires.ftc.teamcode.Subsystems.Vision;
 
 import android.graphics.Canvas;
 
+import androidx.annotation.Nullable;
+
+import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.opencv.calib3d.Calib3d;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
@@ -15,31 +18,33 @@ import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 import org.openftc.easyopencv.OpenCvPipeline;
 
+import java.text.DecimalFormat;
 import java.util.ArrayList;
-import com.sun.tools.javac.util.List;
 
 public class GenericSamplePipeline extends OpenCvPipeline {
 
     // Settings
-    private final Scalar LOW_COLOR_RANGE = new Scalar(10,140,135);
-    private final Scalar HIGH_COLOR_RANGE = new Scalar(50,255,255);
+    private final Scalar LOW_COLOR_RANGE = new Scalar(5,190,145);
+    private final Scalar HIGH_COLOR_RANGE = new Scalar(35,255,255);
 
     // Storage
+    private Telemetry telemetry;
     private Size imageSize;
     private Mat intrinsicCameraMatrix;
     private Mat distortionCoefficients;
-    private Mat extrinsicCameraMatrix; // A matrix that contains the camera's rotation and translation from the robot's origin
-    private Mat invertedCameraProjectionMatrix;
+    private Mat translationMatrix;
+    private Mat rotationMatrix;
 
-    private double cameraDistanceFromGroundMeters = 1; //TODO: Fill out field with actual value. Note: measured from robot origin to ground.
+    private double cameraDistanceFromGroundMeters = 0.015875; //TODO: Fill out field with actual value. Note: measured from robot origin to ground.
 
-    private Mat mapX, mapY;
-    private Mat newIntrinsicCameraMatrix;
+    private Mat mapX = new Mat();
+    private Mat mapY = new Mat();
+    private Mat newIntrinsicCameraMatrix = new Mat();
     private Rect regionOfInterest = new Rect();
 
     // Flags
     private boolean calculatedUndistortedImageValues = false;
-    private boolean calculatedInvertedCameraProjectionMatrix = false;
+    private volatile boolean shouldCaptureFrame = false;
 
     /**
      * Creates a new GenericSamplePipeline that will process images of the given dimensions.
@@ -47,8 +52,9 @@ public class GenericSamplePipeline extends OpenCvPipeline {
      * @param imageWidth The width of the processed image.
      * @param imageHeight The height of the processed image.
      */
-    public GenericSamplePipeline(int imageWidth, int imageHeight) {
+    public GenericSamplePipeline(int imageWidth, int imageHeight, Telemetry telemetry) {
         this.imageSize = new Size(imageWidth, imageHeight);
+        this.telemetry = telemetry;
     }
 
     @Override
@@ -77,6 +83,13 @@ public class GenericSamplePipeline extends OpenCvPipeline {
 
             // Draw bounding boxes on detected objects.
             drawBoundingBoxes(outputFrame, boundingBoxes);
+        }
+
+        // If requested, save a photo of the processed and unprocessed video frames.
+        if (shouldCaptureFrame) {
+            saveMatToDisk(inputFrame, "InputFrame-" + System.currentTimeMillis());
+            saveMatToDisk(outputFrame, "OutputFrame-" + System.currentTimeMillis());
+            shouldCaptureFrame = false;
         }
 
         // Return the processed image.
@@ -134,6 +147,7 @@ public class GenericSamplePipeline extends OpenCvPipeline {
      * @param inputFrame The original input image.
      * @return A binary mask where yellow areas are white, and the rest is black.
      */
+    @Nullable
     private Mat createYellowMask(Mat inputFrame) {
 
         // Convert the input frame from RGB to HSV color space.
@@ -171,7 +185,6 @@ public class GenericSamplePipeline extends OpenCvPipeline {
         Imgproc.Canny(mask, edges, 400, 500);
 
         // Find contours from the detected edges.
-
         ArrayList<MatOfPoint> contours = new ArrayList<>();
         Mat hierarchy = new Mat();
         Imgproc.findContours(edges, contours, hierarchy, Imgproc.RETR_TREE, Imgproc.CHAIN_APPROX_SIMPLE);
@@ -212,19 +225,44 @@ public class GenericSamplePipeline extends OpenCvPipeline {
         for (Rect box : boundingBoxes) {
 
             // Draw a rectangle around each detected object.
-            Imgproc.rectangle(outputFrame, box, new Scalar(255, 255, 255), 2);
-            Imgproc.rectangle(outputFrame, box, new Scalar(0, 0, 0), 1);
+            Imgproc.rectangle(outputFrame, box, new Scalar(0, 0, 0), 3);
+            Imgproc.rectangle(outputFrame, box, new Scalar(135, 114, 9), 1);
 
-            // Place a label above the detected object.
-            Point labelPosition = new Point(box.x, box.y);
-            Imgproc.putText(outputFrame, "Detected Object", labelPosition, Imgproc.FONT_HERSHEY_COMPLEX, 1, new Scalar(196, 85, 8));
+            // Provide a label identifying the detected object.
+            Point labelPositionL = new Point(box.x, box.y);
+            Imgproc.putText(outputFrame, "Neutral Sample", labelPositionL, Imgproc.FONT_HERSHEY_DUPLEX,
+                    0.8, new Scalar(0, 0, 0), 3); //  Outline
+            Imgproc.putText(outputFrame, "Neutral Sample", labelPositionL, Imgproc.FONT_HERSHEY_DUPLEX,
+                    0.8, new Scalar(255, 221, 51), 1); // Text
 
             // Attempt to estimate the 3D position of the detected object.
-            if (newIntrinsicCameraMatrix != null && extrinsicCameraMatrix != null) {
+            if (newIntrinsicCameraMatrix != null && rotationMatrix != null && translationMatrix != null) {
+
+                // Estimate the detected object's 3D position.
                 Mat object3DPosition = estimate3DPosition(box);
-                Imgproc.putText(outputFrame, "(" + object3DPosition.get(0, 0)[0] + "," +
-                        object3DPosition.get(1, 0)[0] + "," + object3DPosition.get(2, 0)[0] +
-                        ")", labelPosition, Imgproc.FONT_HERSHEY_COMPLEX, 1, new Scalar(196, 85, 8));
+
+                // Round all estimated positional values so that the image can be more clearly read and distinguished.
+                DecimalFormat decimalFormat = new DecimalFormat("#.####");
+                String roundedXPositionMeters = decimalFormat.format(object3DPosition.get(0, 0)[0]);
+                String roundedYPositionMeters =  decimalFormat.format(object3DPosition.get(0, 1)[0]);
+                String roundedZPositionMeters =  decimalFormat.format(object3DPosition.get(0, 2)[0]);
+
+                // Create a message that can be displayed on the image.
+                String positionText = "(" + roundedXPositionMeters + "," + roundedYPositionMeters + "," +
+                        roundedZPositionMeters + ")";
+
+                // Display the object's estimated position on screen.
+                Point positionLabelPosition = new Point(box.x - (box.width / 2.0), box.y + box.height);
+                Imgproc.putText(outputFrame, positionText, positionLabelPosition, Imgproc.FONT_HERSHEY_DUPLEX,
+                        0.8, new Scalar(0, 0, 0), 3); // Outline
+                Imgproc.putText(outputFrame, positionText, positionLabelPosition, Imgproc.FONT_HERSHEY_DUPLEX,
+                        0.8, new Scalar(255, 221, 51), 1); // Text
+
+                // Display the detected object's positional estimates on the telemetry.
+                telemetry.addData("Estimated X", roundedXPositionMeters);
+                telemetry.addData("Estimated Y", roundedYPositionMeters);
+                telemetry.addData("Estimated Z", roundedZPositionMeters);
+                telemetry.update();
             }
         }
     }
@@ -233,74 +271,75 @@ public class GenericSamplePipeline extends OpenCvPipeline {
      * Estimates the given detected object's position in 3D space, assuming that the object is on the floor.
      *
      * @param detectedObject The bounding box around the detected object, as a Rect.
-     * @return A new 3x1 matrix containing an estimate of the 3D position of the detected object with
+     * @return A new 1x3 matrix containing an estimate of the 3D position of the detected object with
      *         values in the following order: X, Y, Z
      */
     private Mat estimate3DPosition(Rect detectedObject) {
 
-        // Store the pixel coordinates of the detected object in an array.
-        double[] objectPixelCoordinateValues = new double[] {
-                detectedObject.x,
-                detectedObject.y + detectedObject.height, // Y coordinate from the bottom of the bounding box
-                1
-        };
+        /*
+         Since the pixel coordinates are from the top left corner of the bounding box, adjust them
+         so that they are the bottom center of the bounding box.
 
-        // Store the pixel coordinates of the detected object in a new Mat object.
-        Mat objectPixelCoordinates = new Mat(3, 1, CvType.CV_64FC1);
-        objectPixelCoordinates.put(0, 0, objectPixelCoordinateValues);
+         NOTE: The Y coordinate that's used must be from the bottom of the bounding box because we are assuming
+         that the object is a set position off of the ground. The bottom of the bounding box is where
+         object's geometry touches the ground,  thus we must use it.
+         */
+        double adjustedYPixelCoordinate = detectedObject.y + detectedObject.height;
+        double adjustedXPixelCoordinate = detectedObject.x + (detectedObject.width / 2.0);
 
-        // Estimate the scaling factor (Z value or depth)
-        double scalingFactor = estimateScalingFactor(objectPixelCoordinates.get(1, 0)[0]);
+        /*
+        Estimate the object's position.
+        This is done using the inverse of the following equation: P (Camera) = K * (R | T) * P (World)
 
-        // Scale the pixel coordinates (u, v, 1) by the scaling factor (Z value)
-        Mat scaledObjectPixelCoordinates = new Mat();
-        Core.multiply(objectPixelCoordinates, new Scalar(scalingFactor), scaledObjectPixelCoordinates);
+        Where:
+         - K is the camera matrix,
+         - R is a matrix representing the camera rotation relative to the world,
+         - T is a matrix representing the camera's transformation relative to the world
+         - P (Camera) is a matrix containing the object's pixel coordinates.
+         - P (World) is a matrix containing the object's coordinates relative to the world.
+         */
+        double objectDepthMeters = estimateObjectDepth(adjustedYPixelCoordinate);
+        double xPositionMeters = estimateObjectX(objectDepthMeters, adjustedXPixelCoordinate);
 
-        // If the inverted camera projection matrix hasn't been calculated, then calculate it.
-        if (!calculatedInvertedCameraProjectionMatrix) {
-            invertedCameraProjectionMatrix = calculateInvertedCameraProjectionMatrix();
-            calculatedInvertedCameraProjectionMatrix = true; // The inverted camera projection matrix has been calculated.
-        }
+        // TODO: Convert camera centric coordinates to robot centric coordinates.
 
-        // Now we transform the scaled 2D pixel coordinates into 3D world coordinates
-        Mat objectWorldCoordinates = new Mat();
-        Core.gemm(invertedCameraProjectionMatrix, scaledObjectPixelCoordinates, 1, new Mat(), 0, objectWorldCoordinates);
+        // Represent the estimated position as a Mat object.
+        Mat objectWorldCoordinates = new Mat(1,3, CvType.CV_32FC1);
+        objectWorldCoordinates.put(0, 0, xPositionMeters, -cameraDistanceFromGroundMeters, objectDepthMeters);
 
-        // Return the object's estimated 3D position, as a new matrix.
+        // Return the object's estimated 3D position as a matrix object.
         return objectWorldCoordinates; // 3x1 matrix containing [X, Y, Z]
     }
 
     /**
-     * Estimates the scaling factor (Z value or depth) based on the object's Y pixel coordinate.
+     * Estimates the object's distance from the camera based on the object's Y pixel coordinate.
+     * We are assuming that the object is a set distance away from
      *
      * @param objectYPixelCoordinate The Y pixel coordinate of the detected object.
      * @return The estimated scaling factor.
      */
-    private double estimateScalingFactor(double objectYPixelCoordinate) {
+    private double estimateObjectDepth(double objectYPixelCoordinate) {
         double yDistanceFromCamera = cameraDistanceFromGroundMeters; // Known height of the camera above the ground
         double focalLengthY = newIntrinsicCameraMatrix.get(1, 1)[0]; // fy from the intrinsic camera matrix
         double principlePointY = newIntrinsicCameraMatrix.get(1, 2)[0]; // cy from the intrinsic camera matrix
 
+        // Calculate and return the object's depth.
         return (focalLengthY * yDistanceFromCamera) / (objectYPixelCoordinate - principlePointY);
     }
 
     /**
-     * Calculates the inverted camera projection matrix by combining intrinsic and extrinsic matrices.
+     * Estimates the object's distance along the X axis in 3D space, relative to the camera.
      *
-     * @return The calculated inverted camera projection matrix.
+     * @param objectDepthMeters The detected object's distance from the camera.
+     * @param objectXPixelCoordinate The X pixel coordinate of the detected object.
+     * @return The estimated scaling factor.
      */
-    private Mat calculateInvertedCameraProjectionMatrix() {
+    private double estimateObjectX(double objectDepthMeters, double objectXPixelCoordinate) {
+        double focalLengthX = newIntrinsicCameraMatrix.get(0, 0)[0]; // fx from the intrinsic camera matrix
+        double principlePointX = newIntrinsicCameraMatrix.get(0, 2)[0]; // cx from the intrinsic camera matrix
 
-        // Calculate the combined projection matrix from the intrinsic and extrinsic matrices
-        Mat cameraProjectionMatrix = new Mat();
-        Core.gemm(extrinsicCameraMatrix, newIntrinsicCameraMatrix, 1, new Mat(), 0, cameraProjectionMatrix);
-
-        // Invert the camera's projection matrix
-        Mat invertedMatrix = new Mat();
-        Core.invert(cameraProjectionMatrix, invertedMatrix);
-
-        // Return the inverted camera projection matrix
-        return invertedMatrix;
+        // Calculate and return the object's X position.
+        return  (((objectXPixelCoordinate - principlePointX) * objectDepthMeters) / focalLengthX);
     }
 
     /**
@@ -311,18 +350,9 @@ public class GenericSamplePipeline extends OpenCvPipeline {
      */
     public void setExtrinsicCameraMatrix(Mat cameraRotationMatrix, Mat cameraTransformationMatrix) {
 
-        // Initialize the extrinsic camera matrix with 3 rows and 4 columns.
-        this.extrinsicCameraMatrix = new Mat(3, 4, CvType.CV_64FC1);
-
-        /*
-         * Combine the camera rotation and transformation matrices into the extrinsic camera matrix.
-         * The resulting matrix will contain the rotation values followed by the translation values,
-         * structured as follows: [r1, r2, r3, tx].
-         */
-        Core.hconcat(List.of(cameraRotationMatrix, cameraTransformationMatrix), extrinsicCameraMatrix);
-
-        // Mark the camera projection matrix as needing recalculation after setting the extrinsic matrix.
-        this.calculatedInvertedCameraProjectionMatrix = false;
+        // Set this GenericSamplePipeline's rotation and translation matrices.
+        this.rotationMatrix = cameraRotationMatrix;
+        this.translationMatrix = cameraTransformationMatrix;
     }
 
     /**
@@ -338,9 +368,6 @@ public class GenericSamplePipeline extends OpenCvPipeline {
 
         // The values required to remove distortion must be recalculated.
         this.calculatedUndistortedImageValues = false;
-
-        // The inverse of the camera projection matrix must be recalculated.
-        this.calculatedInvertedCameraProjectionMatrix = false;
     }
 
     /**
@@ -356,11 +383,14 @@ public class GenericSamplePipeline extends OpenCvPipeline {
 
         // The values required to remove distortion must be recalculated.
         this.calculatedUndistortedImageValues = false;
+    }
 
-        // The inverse of the camera projection matrix must be recalculated. While the distortion
-        // coefficients may not be directly used to estimate the 3D position of an object, they
-        // influence the newCameraMatrix, which is used during the position estimation process.
-        this.calculatedInvertedCameraProjectionMatrix = false;
+    /**
+     * Saves two images of what the camera sees to the driver hub. One of the input frame (unprocessed image),
+     * and one of the processed frame (input frame wth annotations and boxes drawn over detected objects).
+     */
+    public void captureFrame() {
+        shouldCaptureFrame = true;
     }
 
     @Override

@@ -29,15 +29,6 @@ public final class Constants {
         public static String DIRECTORY_PATH = Environment.getExternalStorageDirectory().getPath() + "/" + DIRECTORY_NAME;
     }
 
-    public static final class SampleConstants {
-
-        // We use the higher value for height, since then the width on all sides will be assumed to be the same,
-        // making calculates more reliable.
-        public static final double WIDTH_IN_METERS = 0.089; // 3.5 🦅 (in)
-        public static final double HEIGHT_IN_METERS = 0.038; // 1.5 🦅 (in)
-        public static final double DIMENSION_ASPECT_RATIO = HEIGHT_IN_METERS / WIDTH_IN_METERS;
-        public static final double MAXIMUM_ALLOWED_DIMENSIONAL_ERROR = 0.1;
-    }
     public static final class VisionConstants {
 
         // Camera Names
@@ -45,9 +36,7 @@ public final class Constants {
 
         // Camera Specs
         public static final class LogitechC270Constants {
-            public static final int STREAM_WIDTH_PIXELS = 320;
-            public static final int STREAM_HEIGHT_PIXELS = 240;
-            public static final int FOCAL_LENGTH = 720;
+            // TODO: Get camera parameters!
         }
 
         public static final class LogitechBrio100Constants {
@@ -58,26 +47,43 @@ public final class Constants {
             // NOTE: These values may be inaccurate due to potential issues with CalibCalibration.
             public static Mat CAMERA_MATRIX = new Mat(3, 3, CvType.CV_64FC1); // CvType.CV_64FC1 is used to store doubles, providing the necessary precision for calibration data.
 
+            public static Mat CAMERA_ROTATION_MATRIX = new Mat(3, 3, CvType.CV_64FC1);
+            public static Mat CAMERA_TRANSLATION_MATRIX = new Mat(3, 1, CvType.CV_64FC1);
+
             private static double[] cameraMatrixValues = new double[]{
-                    881.1893151638046, 0, 292.5860656237113,   // First row of the camera matrix
-                    0, 886.2559682260007, 220.5268346349555,   // Second row of the camera matrix
+                    876.7542742312495, 0, 328.9249436771823,  // First row of the camera matrix
+                    0, 878.198963669983, 210.28863286011176,   // Second row of the camera matrix
                     0, 0, 1                                    // Third row of the camera matrix (homogeneous coordinate)
+            };
+
+            private static double[] cameraRotationMatrixValues = new double[]{
+                    1, 0, 0,   // First row of the camera rotation matrix
+                    0, 1, 0,   // Second row of the camera rotation matrix
+                    0, 0, 1    // Third row of the camera rotation matrix
+            };
+
+            private static double[] cameraTranslationMatrixValues = new double[]{
+                    0,   // First row of the camera translation matrix
+                    0,   // Second row of the camera translation matrix
+                    0, // Third row of the camera translation matrix
             };
 
             // Static block used to populate the camera matrix with values.
             // The put() method can only be called within a static block for static fields.
             static {
                 CAMERA_MATRIX.put(0, 0, cameraMatrixValues);
+                CAMERA_ROTATION_MATRIX.put(0, 0, cameraRotationMatrixValues);
+                CAMERA_TRANSLATION_MATRIX.put(0, 0, cameraTranslationMatrixValues);
             }
 
             // Distortion coefficients for the camera.
             // These coefficients account for lens distortion during image capture.
             public static final Mat DISTORTION_COEFFICIENTS = new MatOfDouble(
-                    -0.1952774644915585,   // Radial distortion coefficient (k1)
-                    0.5880599936388096,    // Radial distortion coefficient (k2)
-                    0.0008952909724109531, // Tangential distortion coefficient (p1)
-                    -0.0020515149003748276,// Tangential distortion coefficient (p2)
-                    -0.6013858183664286    // Radial distortion coefficient (k3)
+                    0.20235229291431436,
+                    -0.7581107475435005,
+                    -0.0005196745875307539,
+                    -0.0020279369814570638,
+                    0.26706090549820094
             );
         }
     }

@@ -24,8 +24,8 @@ import java.util.ArrayList;
 public class GenericSamplePipeline extends OpenCvPipeline {
 
     // Settings
-    private final Scalar LOW_COLOR_RANGE = new Scalar(5,190,145);
-    private final Scalar HIGH_COLOR_RANGE = new Scalar(35,255,255);
+    private final Scalar LOW_COLOR_RANGE = new Scalar(10,175,170);
+    private final Scalar HIGH_COLOR_RANGE = new Scalar(30,255,255);
 
     // Storage
     private Telemetry telemetry;
@@ -35,7 +35,7 @@ public class GenericSamplePipeline extends OpenCvPipeline {
     private Mat translationMatrix;
     private Mat rotationMatrix;
 
-    private double cameraDistanceFromGroundMeters = 0.015875; //TODO: Fill out field with actual value. Note: measured from robot origin to ground.
+    private double cameraDistanceFromGroundMeters = 0.0254; //TODO: Fill out field with actual value. Note: measured from robot origin to ground.
 
     private Mat mapX = new Mat();
     private Mat mapY = new Mat();
@@ -77,6 +77,7 @@ public class GenericSamplePipeline extends OpenCvPipeline {
         // Get contours and bounding boxes from the masked image.
         ArrayList<MatOfPoint> contours = findContours(yellowMask);
         Rect[] boundingBoxes = extractBoundingBoxes(contours);
+        yellowMask.release();
 
         // If at least one bounding box is found, process and return the updated frame.
         if (boundingBoxes.length > 0) {
@@ -162,6 +163,7 @@ public class GenericSamplePipeline extends OpenCvPipeline {
         // Create a threshold image that isolates yellow regions.
         Mat thresholdImage = new Mat();
         Core.inRange(hsvImage, LOW_COLOR_RANGE, HIGH_COLOR_RANGE, thresholdImage);
+        hsvImage.release();
 
         // Apply morphological operations to clean up noise and fill gaps.
         Mat kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(5, 5));
@@ -221,6 +223,12 @@ public class GenericSamplePipeline extends OpenCvPipeline {
      */
     private void drawBoundingBoxes(Mat outputFrame, Rect[] boundingBoxes) {
 
+        // Keep track of the largest bounding box so that it's estimation can be displayed on the telemetry.
+        double greatestArea = 0;
+        String largestBoundingBoxRoundedXPositionMeters = "";
+        String largestBoundingBoxRoundedYPositionMeters = "";
+        String largestBoundingBoxRoundedZPositionMeters = "";
+
         // Loop through each bounding box and draw it on the output frame.
         for (Rect box : boundingBoxes) {
 
@@ -258,13 +266,19 @@ public class GenericSamplePipeline extends OpenCvPipeline {
                 Imgproc.putText(outputFrame, positionText, positionLabelPosition, Imgproc.FONT_HERSHEY_DUPLEX,
                         0.8, new Scalar(255, 221, 51), 1); // Text
 
-                // Display the detected object's positional estimates on the telemetry.
-                telemetry.addData("Estimated X", roundedXPositionMeters);
-                telemetry.addData("Estimated Y", roundedYPositionMeters);
-                telemetry.addData("Estimated Z", roundedZPositionMeters);
-                telemetry.update();
+                if (box.area() > greatestArea) {
+                    greatestArea = box.area();
+                    largestBoundingBoxRoundedXPositionMeters = roundedXPositionMeters;
+                    largestBoundingBoxRoundedYPositionMeters = roundedYPositionMeters;
+                    largestBoundingBoxRoundedZPositionMeters = roundedZPositionMeters;
+                }
             }
         }
+
+        // Display the most prominent estimated object's position.
+        telemetry.addData("Estimated X", largestBoundingBoxRoundedXPositionMeters);
+        telemetry.addData("Estimated Y", largestBoundingBoxRoundedYPositionMeters);
+        telemetry.addData("Estimated Z", largestBoundingBoxRoundedZPositionMeters);
     }
 
     /**

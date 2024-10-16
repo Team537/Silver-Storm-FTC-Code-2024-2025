@@ -30,6 +30,8 @@ public class MecanumDrive extends LinearOpMode {
         Gamepad previousGamepad = new Gamepad();
         Gamepad currentGamepad = new Gamepad();
 
+        waitForStart();
+
         // While the opmode is active, allow the robot to be controlled by the driver and display
         // useful diagnostic information.
         while (opModeIsActive()) {

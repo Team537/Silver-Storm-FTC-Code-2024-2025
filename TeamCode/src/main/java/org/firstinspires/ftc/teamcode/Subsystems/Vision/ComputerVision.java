@@ -24,12 +24,15 @@ public class ComputerVision implements Subsystem {
     // Settings
     private final String CAMERA_SETTINGS_FILE_NAME = "CameraSettings.txt";
     private final String CAMERA_EXPOSURE_VALUE_NAME = "cameraExposure";
-    private final String CAMERA_GAIN_VALUE_NAME = "cameraExposure";
+    private final String CAMERA_GAIN_VALUE_NAME = "cameronGain";
     private final long DEFAULT_EXPOSURE_TIME_MILLISECONDS = 5;
     private final int DEFAULT_GAIN = 50;
 
     @Override
     public void init(HardwareMap hardwareMap, Telemetry telemetry) {
+
+        // Get access to the camera's settings.
+        cameraSettings = new FileEx(CAMERA_SETTINGS_FILE_NAME);
 
         // Setup the neutralSamplePipeline
         neutralSamplePipeline = new GenericSamplePipeline(LogitechBrio100Constants.STREAM_WIDTH_PIXELS,
@@ -37,9 +40,6 @@ public class ComputerVision implements Subsystem {
         neutralSamplePipeline.setDistortionCoefficients(LogitechBrio100Constants.DISTORTION_COEFFICIENTS);
         neutralSamplePipeline.setIntrinsicCameraMatrix(LogitechBrio100Constants.CAMERA_MATRIX);
         neutralSamplePipeline.setExtrinsicCameraMatrix(LogitechBrio100Constants.CAMERA_ROTATION_MATRIX, LogitechBrio100Constants.CAMERA_TRANSLATION_MATRIX);
-
-        // Get access to the camera's settings.
-        cameraSettings = new FileEx(CAMERA_SETTINGS_FILE_NAME);
 
         // Setup the camera
         setupCamera(hardwareMap);
@@ -75,10 +75,10 @@ public class ComputerVision implements Subsystem {
         // Set the exposure of the camera. This ensures that
         ExposureControl cameraExposureControl = camera.getExposureControl();
         cameraExposureControl.setMode(ExposureControl.Mode.Manual);
-        cameraExposureControl.setExposure(5, TimeUnit.MILLISECONDS);
+        cameraExposureControl.setExposure(cameraExposureTimeMilliseconds, TimeUnit.MILLISECONDS);
 
         GainControl cameraGainControl = camera.getGainControl();
-        cameraGainControl.setGain(25);
+        cameraGainControl.setGain(cameraGain);
 
         // Set the pipeline of the camera and start streaming.
         camera.setPipeline(neutralSamplePipeline);
@@ -93,11 +93,11 @@ public class ComputerVision implements Subsystem {
 
         // Get the camera exposure and gain.
         long cameraExposure = getExposure();
-        int getGain = getGain();
+        int cameraGain = getGain();
 
         // Write the values to the file.
         cameraSettings.addData(CAMERA_EXPOSURE_VALUE_NAME, cameraExposure);
-        cameraSettings.addData(CAMERA_GAIN_VALUE_NAME, getGain);
+        cameraSettings.addData(CAMERA_GAIN_VALUE_NAME, cameraGain);
 
         // Save the file.
         cameraSettings.saveData();

@@ -10,7 +10,6 @@ import org.firstinspires.ftc.teamcode.Utility.Storage.DataLogger;
 import org.firstinspires.ftc.teamcode.Utility.Time.ElapsedTime;
 
 @TeleOp(name = "Camera Settings Tuner", group = "2024-2025 - Debug")
-
 public class CameraSettingsTuner extends LinearOpMode {
 
     RobotHardware robotHardware;

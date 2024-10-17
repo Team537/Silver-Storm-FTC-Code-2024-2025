@@ -10,7 +10,7 @@ public class RobotHardware implements Subsystem {
     // Subsystems
     public Drivetrain drivetrain;
     public ComputerVision computerVision;
-
+    public IMUEx imu;
     // Storage
     private Telemetry telemetry;
 
@@ -18,11 +18,14 @@ public class RobotHardware implements Subsystem {
     public void init(HardwareMap hardwareMap, Telemetry telemetry) {
 
         // Setup subsystems
-        this.drivetrain = new Drivetrain();
-        this.drivetrain.init(hardwareMap, telemetry);
+        //this.drivetrain = new Drivetrain();
+        //this.drivetrain.init(hardwareMap, telemetry);
 
-        this.computerVision = new ComputerVision();
-        computerVision.init(hardwareMap, telemetry);
+        //this.computerVision = new ComputerVision();
+        //computerVision.init(hardwareMap, telemetry);
+
+        this.imu = new IMUEx();
+        this.imu.init(hardwareMap, telemetry);
 
         // Save the telemetry so that diagnostic data can be output.
         this.telemetry = telemetry;

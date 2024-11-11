@@ -4,6 +4,10 @@ import android.os.Environment;
 
 public final class Constants {
 
+    public static final class CommandConstants {
+        public static final String COMMAND_SEPARATION_CHARACTER = "/";
+    }
+
     public static final class DrivetrainConstants {
 
         // Store the maximum possible speeds that the drive motors can turn at.

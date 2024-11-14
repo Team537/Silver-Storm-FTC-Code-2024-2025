@@ -5,6 +5,7 @@ import org.firstinspires.ftc.teamcode.Commands.CommandResult;
 import org.firstinspires.ftc.teamcode.Commands.UtilityCommands.StopCommand;
 import org.firstinspires.ftc.teamcode.Exceptions.NullCommandException;
 import org.firstinspires.ftc.teamcode.Exceptions.UnscheduledCommandException;
+import org.firstinspires.ftc.teamcode.Subsystems.Subsystem;
 
 public class SequentialCommandGroup extends CommandGroupBase {
 
@@ -20,11 +21,8 @@ public class SequentialCommandGroup extends CommandGroupBase {
         // The command isn't finished running.
         executionComplete = true;
 
-        // Get the first scheduled command.
-        CommandBase firstScheduledCommand = this.getCommandAtIndex(0);
-
-        // Add the first scheduled command to the list of active commands.
-        activeCommand = firstScheduledCommand;
+        // Get and add the first scheduled command to the list of active commands.
+        activeCommand = this.getCommandAtIndex(0);
     }
 
     @Override
@@ -114,7 +112,6 @@ public class SequentialCommandGroup extends CommandGroupBase {
      *
      * @param command The command that will be scheduled.
      */
-    @Override
     public void scheduleCommand(CommandBase command) {
 
         // Set the parent of the added command.
@@ -141,6 +138,11 @@ public class SequentialCommandGroup extends CommandGroupBase {
         if (this.SCHEDULED_COMMANDS.get(command.getID()) != null) {
             this.SCHEDULED_COMMANDS.remove(command.getID());
         }
+    }
+
+    @Override
+    public void scheduleCommand(CommandBase commandBase, int priority, Subsystem... requiredSubsystems) {
+
     }
 
     /**

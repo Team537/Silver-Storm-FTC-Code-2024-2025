@@ -70,12 +70,4 @@ abstract public class CommandBase {
             this.commandID = parentID + Constants.CommandConstants.COMMAND_SEPARATION_CHARACTER +  this.commandID;
         }
     }
-
-    protected void addRequirements(Subsystem... requirements) {
-
-        // TODO: Add this command's ID to the subsystems.
-        for (Subsystem subsystem : requirements) {
-
-        }
-    }
 }

@@ -94,10 +94,10 @@ public class Drivetrain implements Subsystem{
         backRightDriveMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         backLeftDriveMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
 
-        frontRightDriveMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        frontLeftDriveMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        backRightDriveMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        backLeftDriveMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        frontRightDriveMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        frontLeftDriveMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        backRightDriveMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        backLeftDriveMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         // Note: Most motors have one side reverse.
         // Due to this, we need to reverse one side of the motors so that the robot can drive straight.
@@ -286,7 +286,5 @@ public class Drivetrain implements Subsystem{
     }
 
     @Override
-    public void periodic() {
-
-    }
+    public void periodic() {}
 }

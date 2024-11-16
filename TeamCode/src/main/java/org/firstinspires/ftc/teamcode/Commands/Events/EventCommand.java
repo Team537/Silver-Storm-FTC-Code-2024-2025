@@ -7,26 +7,7 @@ import org.firstinspires.ftc.teamcode.Exceptions.NullCommandException;
 import org.firstinspires.ftc.teamcode.Exceptions.UnscheduledCommandException;
 
 
-public class EventCommand extends CommandBase {
-    @Override
-    public void init() {
-
-    }
-
-    @Override
-    public void execute() throws NullCommandException, UnscheduledCommandException {
-
-    }
-
-    @Override
-    public boolean isFinished() {
-        return false;
-    }
-
-    @Override
-    public void end(boolean interrupted) {
-
-    }
+public abstract class EventCommand extends CommandBase {
 
     /**
      * Event commands shouldn't ent to begin with, so the getCommandResult() will only stop running commands.

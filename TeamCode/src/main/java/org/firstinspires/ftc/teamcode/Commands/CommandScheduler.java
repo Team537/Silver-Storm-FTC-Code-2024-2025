@@ -174,6 +174,9 @@ public class CommandScheduler implements CommandManager {
         Set<String> commandRemovalQueue = new HashSet<>();
         Set<String> commandActivationQueue = new HashSet<>();
 
+        // Run event commands.
+        executeEventCommands();
+
         // Loop through all of the currently active commands and run or stop them if necessary.
         for (String activeCommandID : ACTIVE_COMMANDS) {
 
@@ -341,12 +344,14 @@ public class CommandScheduler implements CommandManager {
                     continue;
                 }
 
-                // Check if the current running command has a higher priority.
-                // If so, the next command cannot run.
+                // If the next command has a lower priority than the currently iterated command, then do not run this command.
                 if (nextCommandState.getPriority() < commandState.getPriority()) {
                     canRun = false;
-                } else {
-                    // If not, queue the termination of the currently running command.
+                    break;
+                }
+
+                // If command is a higher priority than the currently iterated command, stop the currently iterated command.
+                if (nextCommandState.getPriority() > commandState.getPriority()) {
                     commandTerminationQueue.add(commandState.getCommandID());
                 }
             }

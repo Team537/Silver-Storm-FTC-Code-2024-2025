@@ -2,7 +2,6 @@ package org.firstinspires.ftc.teamcode.Utility;
 
 import android.os.Environment;
 
-import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfDouble;
@@ -16,7 +15,9 @@ public final class Constants {
     public static final class DrivetrainConstants {
 
         // Store the maximum possible speeds that the drive motors can turn at.
+        public static final double MAX_MOTOR_TICKS_PER_SECOND = 2600;
         public static final double MAX_MOTOR_ANGULAR_VELOCITY_RADIANS_PER_SECOND = 36.6519142919;
+
         public static final double MAX_MOTOR_POWER = 1;
 
         // The robot's x velocity will be multiplied by this value. Doing this helps counteract

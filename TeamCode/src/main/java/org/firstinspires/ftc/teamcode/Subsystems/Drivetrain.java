@@ -62,6 +62,7 @@ public class Drivetrain implements Subsystem{
 
         // Setup the robot's hardware.
         setupHardware(hardwareMap);
+        this.telemetry = telemetry;
 
         // Set the robot's position.
         robotPosition = new Pose2d();
@@ -110,7 +111,7 @@ public class Drivetrain implements Subsystem{
         // robot's rotation for various calculations.
         IMU.Parameters imuSettings = new IMU.Parameters(new RevHubOrientationOnRobot(
                 RevHubOrientationOnRobot.LogoFacingDirection.FORWARD,
-                RevHubOrientationOnRobot.UsbFacingDirection.UP));
+                RevHubOrientationOnRobot.UsbFacingDirection.RIGHT));
 
         // Initialize the IMU
         imu = hardwareMap.get(IMU.class, "imu");
@@ -143,19 +144,6 @@ public class Drivetrain implements Subsystem{
             zMotion = (xInput * Math.sin(-robotYawRadians)) + (zInput * Math.cos(-robotYawRadians));
         }
 
-        // If velocityDrive is enabled, convert each motion value into a velocity value.
-        if (velocityDriveEnabled) {
-
-            // Get the max speed that each motor can turn and save it as a variable. his is done to
-            // improve code readability.
-            double maxAngularVelocity = DrivetrainConstants.MAX_MOTOR_ANGULAR_VELOCITY_RADIANS_PER_SECOND;
-
-            // Convert each value into a velocity value.
-            xMotion *= maxAngularVelocity;
-            zMotion *= maxAngularVelocity;
-            rotationalMotion *= maxAngularVelocity;
-        }
-
         // Counteract Imperfect Strafing.
         xMotion *= DrivetrainConstants.STRAIF_OFFSET_MULTIPLIER;
 
@@ -178,11 +166,27 @@ public class Drivetrain implements Subsystem{
         double scalingFactor;
         double absoluteMotionSum = Math.abs(xMotion) + Math.abs(zMotion) + Math.abs(rotationalMotion);
 
-        // Calculate the denominator differently based on whether or not the robot is driving using velocity.
+        // If velocityDrive is enabled, convert each motion value into a velocity value.
         if (velocityDriveEnabled) {
-            scalingFactor = Math.max(absoluteMotionSum, DrivetrainConstants.MAX_MOTOR_ANGULAR_VELOCITY_RADIANS_PER_SECOND);
-        } else {
-            scalingFactor = Math.max(absoluteMotionSum, DrivetrainConstants.MAX_MOTOR_POWER);
+
+            // Get the max speed that each motor can turn and save it as a variable. his is done to
+            // improve code readability.
+            double maxAngularVelocity = DrivetrainConstants.MAX_MOTOR_TICKS_PER_SECOND;
+
+            // Convert each value into a velocity value.
+            xMotion *= maxAngularVelocity;
+            zMotion *= maxAngularVelocity;
+            rotationalMotion *= maxAngularVelocity;
+        }
+
+        // Calculate the denominator differently based on whether or not the robot is driving using velocity.
+        scalingFactor = Math.max(absoluteMotionSum, DrivetrainConstants.MAX_MOTOR_POWER);
+
+        // If we are using velocity drive, convert the motor power value to velocity.
+        if(velocityDriveEnabled) {
+            xMotion *= DrivetrainConstants.MAX_MOTOR_TICKS_PER_SECOND;
+            zMotion *= DrivetrainConstants.MAX_MOTOR_TICKS_PER_SECOND;
+            rotationalMotion *= DrivetrainConstants.MAX_MOTOR_TICKS_PER_SECOND;
         }
 
         // Calculate the motion for each individual motor.
@@ -287,6 +291,5 @@ public class Drivetrain implements Subsystem{
 
     @Override
     public void periodic() {
-
     }
 }

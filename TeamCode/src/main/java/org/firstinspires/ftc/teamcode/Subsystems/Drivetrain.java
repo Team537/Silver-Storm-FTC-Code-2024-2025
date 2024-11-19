@@ -52,6 +52,7 @@ public class Drivetrain implements Subsystem{
 
     /**
      * Sets up the drivetrain so that it can function.
+     *
      * @param hardwareMap The opMode's hardware map. This is required in order to gian access
      *                          to the robot's hardware.
      * @param telemetry The opMode's telemetry. This is required in order to output

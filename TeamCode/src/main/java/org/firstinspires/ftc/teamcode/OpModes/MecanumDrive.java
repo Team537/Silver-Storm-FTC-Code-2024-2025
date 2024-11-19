@@ -51,11 +51,11 @@ public class MecanumDrive extends LinearOpMode {
             }
 
             if (currentGamepad.dpad_up && !previousGamepad.dpad_up) {
-                robotHardware.robotArm.runToPosition(ArmPositions.HIGH_BASKET);
+                robotHardware.robotArm.setTargetPosition(ArmPositions.HIGH_BASKET);
             }
 
             if (currentGamepad.dpad_down && !previousGamepad.dpad_down) {
-                robotHardware.robotArm.runToPosition(ArmPositions.FLOOR_POSITION);
+                robotHardware.robotArm.setTargetPosition(ArmPositions.FLOOR_POSITION);
             }
 
             if (currentGamepad.dpad_left && !previousGamepad.dpad_left) {
@@ -64,7 +64,7 @@ public class MecanumDrive extends LinearOpMode {
 
             // Make the intake turn if requested.
             if (currentGamepad.x && !previousGamepad.x) {
-                robotHardware.manipulator.startIntake();
+                robotHardware.manipulator.intake();
             }
 
             // Stop turning the intake if requested.

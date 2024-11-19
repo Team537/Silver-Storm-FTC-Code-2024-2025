@@ -88,7 +88,6 @@ public class PIDController {
             accumulatedError = 0;
         }
 
-
         // If we change targets, remove the accumulated error. This makes it easier to change directions
         // with certain mechanisms.
         if (lastTarget != -0.12 && targetValue != lastTarget) {
@@ -99,7 +98,7 @@ public class PIDController {
         lastTarget = targetValue;
 
         // Calculate and return the result.
-        return Math.tanh( kp * error + (ki * accumulatedError) + (kd * errorRateOfChange));
+        return Math.tanh(kp * error + (ki * accumulatedError) + (kd * errorRateOfChange));
     }
 
 }

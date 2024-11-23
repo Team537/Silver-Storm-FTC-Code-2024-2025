@@ -56,6 +56,18 @@ public class PIDController {
         this.reset();
     }
 
+    public void setKd(double kd) {
+        this.kd = kd;
+    }
+
+    public void setKi(double ki) {
+        this.ki = ki;
+    }
+
+    public void setKp(double kp) {
+        this.kp = kp;
+    }
+
     /**
      * Reset all of the PIDControllers values.
      */
@@ -64,6 +76,10 @@ public class PIDController {
         this.previousError = 0;
         this.lastTarget = -0.12;
         elapsedTime.reset();
+    }
+
+    public void setErrorTolerance(double errorTolerance) {
+        this.errorTolerance = errorTolerance;
     }
 
     public double update(double targetValue, double currentValue) {

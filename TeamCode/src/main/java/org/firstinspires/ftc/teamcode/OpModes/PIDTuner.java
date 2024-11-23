@@ -4,11 +4,10 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.Gamepad;
 
-import org.firstinspires.ftc.teamcode.Subsystems.Arm.ArmPositions;
 import org.firstinspires.ftc.teamcode.Subsystems.RobotHardware;
 
-@TeleOp(name = "Mecanum Drive", group = "2024-2025")
-public class MecanumDrive extends LinearOpMode {
+@TeleOp(name = "PID Tuner", group = "2024-2025")
+public class PIDTuner extends LinearOpMode {
 
     RobotHardware robotHardware;
 
@@ -26,6 +25,11 @@ public class MecanumDrive extends LinearOpMode {
         // Wait for the OpMode to be started.
         waitForStart();
 
+        // Setup PID Coefficients
+        double p = 0;
+        double i = 0;
+        double d = 0;
+
         // While the opmode is active, allow the robot to be controlled by the driver and display
         // useful diagnostic information.
         while (opModeIsActive()) {
@@ -41,48 +45,62 @@ public class MecanumDrive extends LinearOpMode {
             currentGamepad.copy(gamepad1);
 
             // Toggle whether or not the robot will drive in a field centric manner.
-            if (currentGamepad.back && !previousGamepad.back) {
-                robotHardware.drivetrain.toggleFieldCentricDrive();
+            if (currentGamepad.back) {
+                robotHardware.periodic();
             }
 
             // Toggle whether or not the robot will drive using velocity.
             if (currentGamepad.start && !previousGamepad.start) {
-                robotHardware.drivetrain.toggleVelocityDrive();
+                robotHardware.robotArm.setTargetPosition(60);
+                robotHardware.robotArm.setP(p);
+                robotHardware.robotArm.setI(i);
+                robotHardware.robotArm.setD(d);
             }
 
+            // Proportional term.
             if (currentGamepad.dpad_up && !previousGamepad.dpad_up) {
-                robotHardware.robotArm.setTargetPosition(ArmPositions.HIGH_BASKET);
+                p+= 0.01;
             }
 
             if (currentGamepad.dpad_down && !previousGamepad.dpad_down) {
-                robotHardware.robotArm.setTargetPosition(ArmPositions.FLOOR_POSITION);
+                p-= 0.01;
             }
 
+            // Derivative term.
             if (currentGamepad.dpad_left && !previousGamepad.dpad_left) {
-                robotHardware.robotArm.eStop();
+                d-=0.01;
             }
 
-            // Make the intake turn if requested.
+            if (currentGamepad.dpad_right && !previousGamepad.dpad_right) {
+                d+=0.001;
+            }
+
+            // Integral Term
             if (currentGamepad.x && !previousGamepad.x) {
-                robotHardware.manipulator.intake();
-            }
-
-            // Stop turning the intake if requested.
-            if (currentGamepad.a && !previousGamepad.a) {
-                robotHardware.manipulator.stopIntake();
+                i+= 0.001;
             }
 
             // Stop turning the intake if requested.
             if (currentGamepad.b && !previousGamepad.b) {
-                robotHardware.manipulator.outtake();
+                i-=0.001;
             }
 
+            // Gauge how well the arm cna reach different targets.
+            if (currentGamepad.a && !previousGamepad.a) {
+                robotHardware.robotArm.setTargetPosition(135);
+            }
 
             // Drive the robot based on user inputs.
             robotHardware.drivetrain.driveRobotWithControllerInputs(currentGamepad.left_stick_x,
                     -currentGamepad.left_stick_y, currentGamepad.right_stick_x);
 
+            //robotHardware.robotArm.setArmPower(power);
+
             // Update Telemetry.
+            telemetry.addLine("P: " + p);
+            telemetry.addLine("I: " + i);
+            telemetry.addLine("D: " + d);
+
             telemetry.update();
         }
     }

@@ -17,7 +17,8 @@ public class LinearSlides implements Subsystem {
     private final double ERROR_TOLLERANCE_METERS = 0.01;
 
     // Conversion Values
-    private final double TICKS_TO_EXTENSION_DISTANCE_METERS = 0; // TODO: TUNE / FIND VALUE
+    private final double TICKS_TO_EXTENSION_DISTANCE_METERS = 0.00008792307 ;
+    private Telemetry telemetry;
 
     // Hardware Storage
     private DcMotorEx slideMotor;
@@ -33,6 +34,8 @@ public class LinearSlides implements Subsystem {
     private final double GRAVITATIONAL_COMPENSATION_CONSTANT = 0; // TODO: TUNE!!!!!!!
 
     // General Storage
+    private SlideExtension targetLength;
+    private double targetLengthEncoderTicks = 0;
     private double targetPosition = 0;
 
     // Flags
@@ -55,9 +58,13 @@ public class LinearSlides implements Subsystem {
 
         // Setup the PID Controller.
         this.pidController = new PIDController(PROPORTIONAL_COEFFICIENT, INTEGRAL_COEFFICIENT, DERIVATIVE_COEFFICIENT);
+        this.targetLength = SlideExtension.REST;
 
         // Setup hardware.
         setupHardware(hardwareMap);
+
+        // Store the telemetry for later use.
+        this.telemetry = telemetry;
     }
 
     /**
@@ -70,7 +77,6 @@ public class LinearSlides implements Subsystem {
         // Create te code object for the motor.
         this.slideMotor = hardwareMap.get(DcMotorEx.class, "slideMotor");
         this.slideMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        this.slideMotor.setDirection(DcMotorSimple.Direction.REVERSE); // TODO - Check direction.
 
         // Run the arm motor using the encoder so that we can use the encoders to preform various tasks.
         this.slideMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -114,6 +120,21 @@ public class LinearSlides implements Subsystem {
     }
 
     /**
+     * Sets the target length for the slide to reach.
+     *
+     * @param targetLength The length the slide will target.
+     */
+    public void setTargetLength(SlideExtension targetLength) {
+        this.targetLength = targetLength;
+        this.targetLengthEncoderTicks = this.targetLength.getExtensionLengthMeters() / TICKS_TO_EXTENSION_DISTANCE_METERS;
+    }
+
+    @Deprecated
+    public void setMotorPower(double motorPower) {
+        this.slideMotor.setPower(motorPower);
+    }
+
+    /**
      * Return whether or not the linear slides have reached their target position.
      *
      * @return Whether or not the linear slides have reached their target position.
@@ -130,7 +151,10 @@ public class LinearSlides implements Subsystem {
             return;
         }
 
+        telemetry.addLine("Slide Position (m): " + getExtensionDistance());
+        telemetry.addLine("Slide Position (in): " + getExtensionDistance() * 39.37);
+
         // Update motor velocity based on current system state.
-        calculateNewMotorPower();
+        //calculateNewMotorPower();
     }
 }

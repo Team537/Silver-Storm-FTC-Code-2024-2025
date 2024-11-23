@@ -13,7 +13,6 @@ public class RobotHardware implements Subsystem {
     public Drivetrain drivetrain;
     public ComputerVision computerVision;
     public Arm robotArm;
-    public Manipulator manipulator;
 
     // Storage
     private Telemetry telemetry;
@@ -30,9 +29,6 @@ public class RobotHardware implements Subsystem {
 
         this.robotArm = new Arm();
         this.robotArm.init(hardwareMap, telemetry);
-
-        this.manipulator = new Manipulator();
-        this.manipulator.init(hardwareMap, telemetry);
 
         // Save the telemetry so that diagnostic data can be output.
         this.telemetry = telemetry;

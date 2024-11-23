@@ -111,11 +111,18 @@ public class Drivetrain implements Subsystem{
         // robot's rotation for various calculations.
         IMU.Parameters imuSettings = new IMU.Parameters(new RevHubOrientationOnRobot(
                 RevHubOrientationOnRobot.LogoFacingDirection.FORWARD,
-                RevHubOrientationOnRobot.UsbFacingDirection.UP));
+                RevHubOrientationOnRobot.UsbFacingDirection.RIGHT));
 
         // Initialize the IMU
         imu = hardwareMap.get(IMU.class, "imu");
         imu.initialize(imuSettings);
+    }
+
+    /**
+     * Resets the IMU such that the robot believes it is facing the zero direction.
+     */
+    public void resetIMU() {
+
     }
 
     /**
@@ -287,5 +294,7 @@ public class Drivetrain implements Subsystem{
     }
 
     @Override
-    public void periodic() {}
+    public void periodic() {
+        telemetry.addLine("Heading (Deg): " + imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.DEGREES));
+    }
 }

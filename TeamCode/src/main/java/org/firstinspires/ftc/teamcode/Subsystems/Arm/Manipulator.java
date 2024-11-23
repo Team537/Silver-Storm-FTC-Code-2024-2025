@@ -36,7 +36,7 @@ public class Manipulator implements Subsystem {
      * @param hardwareMap The hardware map so that hardware cna be accessed.
      */
     private void setupHardware(HardwareMap hardwareMap) {
-        crServo = hardwareMap.get(CRServo.class, "manipulatorServo");
+        crServo = hardwareMap.get(CRServo.class, "intakeServo");
         crServo.setDirection(DcMotorSimple.Direction.REVERSE);
     }
 
@@ -53,6 +53,10 @@ public class Manipulator implements Subsystem {
      */
     public void intake() {
         crServo.setPower(1);
+    }
+
+    public void setMotorPower(double motorPower) {
+        this.crServo.setPower(motorPower);
     }
 
     /**

@@ -2,7 +2,6 @@ package org.firstinspires.ftc.teamcode.Subsystems.Arm;
 
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
@@ -12,8 +11,8 @@ import org.firstinspires.ftc.teamcode.Utility.Controllers.PIDController;
 public class Arm implements Subsystem {
 
     // Settings
-    private final double MAX_ANGULAR_VELOCITY_RADIANS_PER_SECOND = 13.6135681656;
-    private final double MAX_ANGULAR_SPEED_TICKS_PER_SECOND = 0; // TODO: DERIVE VALUE
+    private double ticksToRadians = 0.00557019974;
+    private double starting_angle_radians = -1.02974; //-1.02974;
 
     // Subsystem Storage
     private LinearSlides linearSlides;
@@ -25,11 +24,11 @@ public class Arm implements Subsystem {
 
     // Controller Storage
     private PIDController pidController;
-    private final double PROPORTIONAL_COEFFICIENT = 0;
+    private final double PROPORTIONAL_COEFFICIENT = 0.05;
     private final double INTEGRAL_COEFFICIENT = 0;
-    private final double DERIVATIVE_COEFFICIENT = 0;
-    private final double GRAVITATIONAL_COMPENSATION_CONSTANT = 0; // TODO: Tune value
-    private final double SLIDE_EXTENSION_CONSTANT = 0; // TODO: Tune value
+    private final double DERIVATIVE_COEFFICIENT = 0.001;
+    private final double GRAVITATIONAL_COMPENSATION_CONSTANT = 0.021;
+    private final double SLIDE_EXTENSION_CONSTANT = 0.5053;
 
     // General Storage
     private ArmPositions currentTargetArmPosition;
@@ -56,6 +55,10 @@ public class Arm implements Subsystem {
         this.manipulator = new Manipulator();
         this.manipulator.init(hardwareMap, telemetry);
 
+        // Setup the PID controller
+        this.pidController = new PIDController(PROPORTIONAL_COEFFICIENT, INTEGRAL_COEFFICIENT, DERIVATIVE_COEFFICIENT);
+        this.pidController.setErrorTolerance(0.0174533);
+
         // Setup the hardware.
         setupHardware(hardwareMap);
 
@@ -71,7 +74,6 @@ public class Arm implements Subsystem {
         // Create te code object for the motor.
         armMotor = hardwareMap.get(DcMotorEx.class, "armMotor");
         armMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        armMotor.setDirection(DcMotorSimple.Direction.REVERSE);
 
         // Run the arm motor using the encoder so that we can use the encoders to preform various tasks.
         armMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -85,7 +87,7 @@ public class Arm implements Subsystem {
      */
     public void setTargetPosition(ArmPositions armPositions) {
         this.currentTargetArmPosition = armPositions;
-        this.targetPosition = armPositions.encoderPosition();
+        this.targetPosition = armPositions.getArmAngleRadians();
     }
 
     /**
@@ -94,7 +96,7 @@ public class Arm implements Subsystem {
     public void calculateNewMotorPower() {
 
         // Calculate feedback based on the distance towards the target position.
-        double calculatedFeedbackMotorPower = this.pidController.update(this.targetPosition, this.armMotor.getCurrentPosition());
+        double calculatedFeedbackMotorPower = this.pidController.update(this.targetPosition, this.getArmAngle());
 
         // Acquire necessary values to counteract both gravity and the slide extension length.
         double armAngle = getArmAngle();
@@ -104,8 +106,7 @@ public class Arm implements Subsystem {
         double feedforwards = (GRAVITATIONAL_COMPENSATION_CONSTANT * Math.cos(armAngle)) +
                 (SLIDE_EXTENSION_CONSTANT * slideExtensionLength);
 
-        // Calculate the final motor power.
-        double motorPower = feedforwards + calculatedFeedbackMotorPower;
+        double motorPower =feedforwards + calculatedFeedbackMotorPower;
 
         // Set the motor power of the arm motor.
         this.armMotor.setPower(motorPower);
@@ -126,7 +127,20 @@ public class Arm implements Subsystem {
      * @return The angle between the ground and the arm.
      */
     public double getArmAngle() {
-        return 0;
+        return starting_angle_radians + (armMotor.getCurrentPosition() * ticksToRadians);
+    }
+
+    public void adjustForState() {
+
+        // Acquire necessary values to counteract both gravity and the slide extension length.
+        double armAngle = getArmAngle();
+        double slideExtensionLength = this.linearSlides.getExtensionDistance();
+
+        // Calculate the feedforwards value to compensate for slide extension length and gravity.
+        double feedforwards = (GRAVITATIONAL_COMPENSATION_CONSTANT * Math.cos(armAngle)) +
+                (SLIDE_EXTENSION_CONSTANT * slideExtensionLength);
+
+        armMotor.setPower(feedforwards);
     }
 
     /**
@@ -147,6 +161,21 @@ public class Arm implements Subsystem {
         return manipulator;
     }
 
+    public void setP(double p) {
+        this.pidController.setKp(p);
+    }
+
+    public void setD(double d) {
+        this.pidController.setKd(d);
+    }
+
+    public void setI(double i) {
+        this.pidController.setKi(i);
+    }
+
+    public void setTargetPosition(double theta) {
+        this.targetPosition = Math.toRadians(theta);
+    }
     @Override
     public void periodic() {
 
@@ -158,6 +187,10 @@ public class Arm implements Subsystem {
         // Update this subsystem's subsystems.
         this.linearSlides.periodic();
         this.manipulator.periodic();;
+
+        telemetry.addLine("Arm Position: " + armMotor.getCurrentPosition());
+        telemetry.addLine("Arm Angle: " + (getArmAngle() / Math.PI * 180));
+        telemetry.addLine("Target Position: " + targetPosition);
 
         // Update motor velocity based on current system state.
         calculateNewMotorPower();

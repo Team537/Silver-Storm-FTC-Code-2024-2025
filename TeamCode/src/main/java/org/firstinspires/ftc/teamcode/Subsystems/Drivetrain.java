@@ -295,6 +295,5 @@ public class Drivetrain implements Subsystem{
 
     @Override
     public void periodic() {
-        telemetry.addLine("Heading (Deg): " + imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.DEGREES));
     }
 }

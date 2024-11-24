@@ -193,6 +193,6 @@ public class Arm implements Subsystem {
         telemetry.addLine("Target Position: " + targetPosition);
 
         // Update motor velocity based on current system state.
-        calculateNewMotorPower();
+        //calculateNewMotorPower();
     }
 }

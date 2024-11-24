@@ -174,19 +174,6 @@ public class Drivetrain implements Subsystem{
         double scalingFactor;
         double absoluteMotionSum = Math.abs(xMotion) + Math.abs(zMotion) + Math.abs(rotationalMotion);
 
-        // If velocityDrive is enabled, convert each motion value into a velocity value.
-        if (velocityDriveEnabled) {
-
-            // Get the max speed that each motor can turn and save it as a variable. his is done to
-            // improve code readability.
-            double maxAngularVelocity = DrivetrainConstants.MAX_MOTOR_TICKS_PER_SECOND;
-
-            // Convert each value into a velocity value.
-            xMotion *= maxAngularVelocity;
-            zMotion *= maxAngularVelocity;
-            rotationalMotion *= maxAngularVelocity;
-        }
-
         // Calculate the denominator differently based on whether or not the robot is driving using velocity.
         scalingFactor = Math.max(absoluteMotionSum, DrivetrainConstants.MAX_MOTOR_POWER);
 

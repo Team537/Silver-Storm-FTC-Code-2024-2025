@@ -55,7 +55,6 @@ public class MecanumDrive extends LinearOpMode {
                 robotHardware.robotArm.setTargetPosition(ArmPositions.LOW_BASKET);
             }
 
-
             // Toggle whether or not the robot will drive using velocity.
             if (currentGamepad.guide && !previousGamepad.guide) {
                 robotHardware.drivetrain.toggleVelocityDrive();
@@ -88,11 +87,6 @@ public class MecanumDrive extends LinearOpMode {
             double xInput = currentGamepad.left_stick_x;
             double zInput = currentGamepad.left_stick_y;
             double rotationalInput = currentGamepad.right_stick_x;
-
-            // Make smaller inputs more precise.
-            xInput = Math.pow(xInput, 1.7);
-            zInput = Math.pow(zInput, 1.7);
-            rotationalInput = Math.pow(rotationalInput, 1.7);
 
             // Drive the robot.
             robotHardware.drivetrain.driveRobotWithControllerInputs(xInput,

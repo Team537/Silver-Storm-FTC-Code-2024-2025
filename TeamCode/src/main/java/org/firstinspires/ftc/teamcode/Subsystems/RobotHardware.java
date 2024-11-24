@@ -24,8 +24,8 @@ public class RobotHardware implements Subsystem {
         this.drivetrain = new Drivetrain();
         this.drivetrain.init(hardwareMap, telemetry);
 
-        //this.computerVision = new ComputerVision();
-        //computerVision.init(hardwareMap, telemetry);
+        this.computerVision = new ComputerVision();
+        computerVision.init(hardwareMap, telemetry);
 
         this.robotArm = new Arm();
         this.robotArm.init(hardwareMap, telemetry);

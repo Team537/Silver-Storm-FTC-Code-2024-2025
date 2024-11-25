@@ -25,7 +25,6 @@ public class Drivetrain implements Subsystem{
     private DcMotorEx frontLeftDriveMotor;
     private DcMotorEx backRightDriveMotor;
     private DcMotorEx backLeftDriveMotor;
-    private IMU imu;
 
     // Settings
     private boolean fieldCentricEnabled = false;
@@ -112,16 +111,6 @@ public class Drivetrain implements Subsystem{
         frontLeftDriveMotor.setDirection(DcMotorSimple.Direction.REVERSE);
         backRightDriveMotor.setDirection(DcMotorSimple.Direction.FORWARD);
         backLeftDriveMotor.setDirection(DcMotorSimple.Direction.REVERSE);
-
-        // Create the IMU parameters that tell the IMU what direction its facing and allow us to use the
-        // robot's rotation for various calculations.
-        IMU.Parameters imuSettings = new IMU.Parameters(new RevHubOrientationOnRobot(
-                RevHubOrientationOnRobot.LogoFacingDirection.FORWARD,
-                RevHubOrientationOnRobot.UsbFacingDirection.RIGHT));
-
-        // Initialize the IMU
-        imu = hardwareMap.get(IMU.class, "imu");
-        imu.initialize(imuSettings);
     }
 
     /**
@@ -143,7 +132,7 @@ public class Drivetrain implements Subsystem{
         if (fieldCentricEnabled ) {
 
             // Store the robot's rotation.
-            double robotYawRadians = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
+            double robotYawRadians = coordinateSystem.getRobotHeadingRadians();
 
             // Rotate the velocity value
             xMotion = (xInput * Math.cos(-robotYawRadians)) - (zInput * Math.sin(-robotYawRadians));

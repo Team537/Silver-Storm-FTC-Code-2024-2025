@@ -2,10 +2,13 @@ package org.firstinspires.ftc.teamcode.Subsystems.Odometry;
 
 import androidx.annotation.NonNull;
 
+import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.hardware.IMU;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.teamcode.Subsystems.Subsystem;
 import org.firstinspires.ftc.teamcode.Utility.Geometry.Pose2d;
 import org.firstinspires.ftc.teamcode.Utility.Geometry.Rotation2d;
@@ -19,6 +22,7 @@ public class CoordinateSystem implements Subsystem {
     // Hardware Storage
     private OdometryPod parallelOdometryPod;
     private OdometryPod perpendicularOdometryPod;
+    private IMU imu;
 
     // Storage Coordinate Data
     private Pose2d robotPosition;
@@ -74,8 +78,15 @@ public class CoordinateSystem implements Subsystem {
         this.parallelOdometryPod.init(hardwareMap, telemetry);
         this.perpendicularOdometryPod.init(hardwareMap, telemetry);
 
-        // Setup IMU stuff.
-        // TODO: Add IMU stuff.
+        // Create the IMU parameters that tell the IMU what direction its facing and allow us to use the
+        // robot's rotation for various calculations.
+        IMU.Parameters imuSettings = new IMU.Parameters(new RevHubOrientationOnRobot(
+                RevHubOrientationOnRobot.LogoFacingDirection.FORWARD,
+                RevHubOrientationOnRobot.UsbFacingDirection.RIGHT));
+
+        // Initialize the IMU
+        imu = hardwareMap.get(IMU.class, "imu");
+        imu.initialize(imuSettings);
 
         // Store the robot's telemetry so that it can be used later.
         this.telemetry = telemetry;
@@ -124,7 +135,7 @@ public class CoordinateSystem implements Subsystem {
      * @return This CoordinateSystem's heading in radians.
      */
     public double getRobotHeadingRadians() {
-        return robotHeading;
+        return imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
     }
 
     /**
@@ -138,7 +149,7 @@ public class CoordinateSystem implements Subsystem {
         double perpendicularOdometryPodPositionalChange = perpendicularOdometryPod.getPositionalChangeMeters();
 
         // Account for the change in position the encoders would experience from the robot rotating.
-        double currentRobotHeadingRadians = 0; // TODO: IMPLEMENT IMU FEATURES!!!! Possibly move the change in theta to a separate class.
+        double currentRobotHeadingRadians = getRobotHeadingRadians();
         double rotationalChangeRadians = currentRobotHeadingRadians - robotHeading;
 
         // Calculate the arc length each odometry wheel traveled. This is the distance the encoders traveled due to rotation.

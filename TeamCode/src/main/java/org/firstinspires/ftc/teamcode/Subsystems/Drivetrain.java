@@ -11,10 +11,14 @@ import com.qualcomm.robotcore.hardware.IMU;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.teamcode.Subsystems.Odometry.CoordinateSystem;
 import org.firstinspires.ftc.teamcode.Utility.Constants.DrivetrainConstants;
 import org.firstinspires.ftc.teamcode.Utility.Geometry.Pose2d;
 
 public class Drivetrain implements Subsystem{
+
+    // Subsystems
+    private CoordinateSystem coordinateSystem;
 
     // Hardware
     private DcMotorEx frontRightDriveMotor;
@@ -38,7 +42,8 @@ public class Drivetrain implements Subsystem{
      * Creates a new drivetrain, with the default starting position.
      */
     public Drivetrain() {
-        robotPosition = new Pose2d();
+        this.robotPosition = new Pose2d();
+        this.coordinateSystem = new CoordinateSystem();
     }
 
     /**
@@ -47,7 +52,8 @@ public class Drivetrain implements Subsystem{
      * @param startingLocation The robot's position on the field, as a Pose2d.
      */
     public Drivetrain(Pose2d startingLocation) {
-        robotPosition = startingLocation;
+        this.robotPosition = startingLocation;
+        this.coordinateSystem = new CoordinateSystem(startingLocation);
     }
 
     /**
@@ -269,6 +275,24 @@ public class Drivetrain implements Subsystem{
      */
     public void toggleVelocityDrive(boolean enabled) {
         velocityDriveEnabled = enabled;
+    }
+
+    /**
+     * Returns this robot's coordinate system.
+     *
+     * @return This robot's coordinate system.
+     */
+    public Subsystem getCoordinateSystem() {
+        return this.coordinateSystem;
+    }
+
+    /**
+     * Returns this robot's position as a pose2d.
+     *
+     * @return This robot's position as a pose2d.
+     */
+    public Pose2d getRobotPosition() {
+        return this.coordinateSystem.getRobotPosition();
     }
 
     /**

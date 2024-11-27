@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode.Commands.Directives;
 
 import org.firstinspires.ftc.teamcode.Commands.CommandBase;
+import org.firstinspires.ftc.teamcode.Commands.CommandManager;
 import org.firstinspires.ftc.teamcode.Commands.CommandScheduler;
 import org.firstinspires.ftc.teamcode.Commands.UtilityCommands.StopCommand;
 import org.firstinspires.ftc.teamcode.Exceptions.UnscheduledCommandException;
@@ -8,6 +9,7 @@ import org.firstinspires.ftc.teamcode.Exceptions.UnscheduledCommandException;
 public class SkipDirective implements Directive {
 
     private String commandID;
+    private CommandManager commandManager;
     private int step;
 
     /**
@@ -15,12 +17,22 @@ public class SkipDirective implements Directive {
      * command ID and step amount.
      *
      * @param commandID The ID of the command that this directive is associated with.
+     * @param parentCommand The parent command that is running this command. If the command scheduler is running this command,
+     *                      use the null keyword.
      * @param step The number of steps (positive or negative) to move forward or backward
      *             from the command with the specified ID to determine the next command.
      */
-    public SkipDirective(String commandID, int step) {
+    public SkipDirective(String commandID, CommandManager parentCommand, int step) {
         this.commandID = commandID;
         this.step = step;
+
+        // If the parent command is null, use the command scheduler.
+        // Otherwise, use the given parent command for the following operations.
+        if (parentCommand == null) {
+            this.commandManager = CommandScheduler.getInstance();
+        } else {
+            this.commandManager = parentCommand;
+        }
     }
 
     /**
@@ -45,14 +57,11 @@ public class SkipDirective implements Directive {
     @Override
     public CommandBase execute() throws UnscheduledCommandException {
 
-        // Get the CommandScheduler instance to interact with the scheduled commands.
-        CommandScheduler commandScheduler = CommandScheduler.getInstance();
-
         // Retrieve the index of the command currently being executed.
-        int activeCommandIndex = commandScheduler.getCommandIndex(commandID);
+        int activeCommandIndex = commandManager.getCommandIndex(commandID);
 
         // Calculate the next command by moving 'step' indexes forward or backward from the active command.
-        CommandBase nextCommand = commandScheduler.getCommandAtIndex(activeCommandIndex + step);
+        CommandBase nextCommand = commandManager.getCommandAtIndex(activeCommandIndex + step);
 
         // If no valid command is found at the calculated index, return a StopCommand to halt further execution.
         if (nextCommand == null) {

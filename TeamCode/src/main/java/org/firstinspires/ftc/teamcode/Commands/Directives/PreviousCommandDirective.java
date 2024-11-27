@@ -1,21 +1,32 @@
 package org.firstinspires.ftc.teamcode.Commands.Directives;
 
 import org.firstinspires.ftc.teamcode.Commands.CommandBase;
+import org.firstinspires.ftc.teamcode.Commands.CommandManager;
 import org.firstinspires.ftc.teamcode.Commands.CommandScheduler;
 import org.firstinspires.ftc.teamcode.Commands.UtilityCommands.StopCommand;
 import org.firstinspires.ftc.teamcode.Exceptions.UnscheduledCommandException;
 
 public class PreviousCommandDirective implements Directive {
     private String commandID;
+    private CommandManager commandManager;
 
-    // TODO: Allow logic that makes it possible for command groups to be used instead of the CommandScheduler.
     /**
      * Create a new PreviousCommandDirective for the specified command ID.
      *
      * @param commandID The ID of the command that is creating this directive.
+     * @param parentCommand The parent command that is running this command. If the command scheduler is running this command,
+     *                      use the null keyword.
      */
-    public PreviousCommandDirective(String commandID) {
+    public PreviousCommandDirective(String commandID, CommandManager parentCommand) {
         this.commandID = commandID;
+
+        // If the parent command is null, use the command scheduler.
+        // Otherwise, use the given parent command for the following operations.
+        if (parentCommand == null) {
+            this.commandManager = CommandScheduler.getInstance();
+        } else {
+            this.commandManager = parentCommand;
+        }
     }
 
     /**
@@ -37,14 +48,11 @@ public class PreviousCommandDirective implements Directive {
     @Override
     public CommandBase execute() throws UnscheduledCommandException {
 
-        // Get the command scheduler so that necessary actions can be reformed.
-        CommandScheduler commandScheduler = CommandScheduler.getInstance();
-
         // Get the index of the currently running command.
-        int activeCommandIndex = commandScheduler.getCommandIndex(commandID);
+        int activeCommandIndex = commandManager.getCommandIndex(commandID);
 
         // Get the command at the active command's index minus 1. This is the previous command.
-        CommandBase nextCommand = commandScheduler.getCommandAtIndex(activeCommandIndex - 1);
+        CommandBase nextCommand = commandManager.getCommandAtIndex(activeCommandIndex - 1);
 
         // If no command exists at the previous command's index, create a new StopCommand and return that instead,
         // since there isn't any other command to run.

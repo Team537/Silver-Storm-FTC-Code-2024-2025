@@ -7,7 +7,7 @@ import org.firstinspires.ftc.teamcode.Exceptions.UnscheduledCommandException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-abstract class CommandGroupBase extends CommandBase implements CommandManager {
+public abstract class CommandGroupBase extends CommandBase implements CommandManager {
 
     protected final Map<String, CommandBase> SCHEDULED_COMMANDS = new LinkedHashMap<>();
 

@@ -1,12 +1,15 @@
 package org.firstinspires.ftc.teamcode.Commands;
 
+import org.firstinspires.ftc.teamcode.Commands.CommandGroups.CommandGroupBase;
+import org.firstinspires.ftc.teamcode.Commands.Directives.NextCommandDirective;
 import org.firstinspires.ftc.teamcode.Exceptions.NullCommandException;
 import org.firstinspires.ftc.teamcode.Exceptions.UnscheduledCommandException;
-import org.firstinspires.ftc.teamcode.Subsystems.Subsystem;
 import org.firstinspires.ftc.teamcode.Utility.Constants;
 
 abstract public class CommandBase {
 
+    // Storage
+    private CommandGroupBase parentCommand;
     private String parentID; // The ID of the command group this command is located in. If the command isn't in a command group, there won't be any parent ID.
     private String commandID;
 
@@ -20,10 +23,11 @@ abstract public class CommandBase {
     public abstract void end(boolean interrupted); // Runs when the command ends.
 
     // Non-abstract methods
-    public void setParentID(CommandBase commandParent) {
+    public void setParent(CommandGroupBase commandParent) {
 
         // Store the parent command's ID. This will be used alongside this command's
         this.parentID = commandParent.getID();
+        this.parentCommand = commandParent;
 
         // This commands ID needs to be recalculated due to the change in parent.
         this.calculatedID = false;
@@ -37,7 +41,7 @@ abstract public class CommandBase {
      * @return A CommandResult object determining what will happen when this finished running.
      */
     public CommandResult getCommandResult() {
-        return CommandResult.fromDirective(null);
+        return CommandResult.fromDirective(new NextCommandDirective(this.getID(), parentCommand));
     }
 
     /**

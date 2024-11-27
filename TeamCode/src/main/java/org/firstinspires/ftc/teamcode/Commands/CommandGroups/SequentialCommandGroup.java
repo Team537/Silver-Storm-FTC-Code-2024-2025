@@ -2,71 +2,155 @@ package org.firstinspires.ftc.teamcode.Commands.CommandGroups;
 
 import org.firstinspires.ftc.teamcode.Commands.CommandBase;
 import org.firstinspires.ftc.teamcode.Commands.CommandResult;
+import org.firstinspires.ftc.teamcode.Commands.CommandState;
+import org.firstinspires.ftc.teamcode.Commands.CommandStatus;
 import org.firstinspires.ftc.teamcode.Commands.UtilityCommands.StopCommand;
 import org.firstinspires.ftc.teamcode.Exceptions.NullCommandException;
 import org.firstinspires.ftc.teamcode.Exceptions.UnscheduledCommandException;
 import org.firstinspires.ftc.teamcode.Subsystems.Subsystem;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+
 public class SequentialCommandGroup extends CommandGroupBase {
 
+    // Maps to track scheduled commands, their states, and subsystem usage.
+    private final Map<String, CommandState> COMMAND_STATES = new HashMap<>();
+    private final Map<Subsystem, List<CommandState>> SUBSYSTEM_USAGE_MAP = new HashMap<>();
+
     // Storage
-    private CommandBase activeCommand; // Only one command can run at a time.
+    private String activeCommandID;
+    private String startingCommandID;
 
     // Flags
-    private boolean executionComplete = false;
+    private boolean isFinished = false;
+    private boolean emergencyStop = false;
 
     @Override
     public void init() {
 
-        // The command isn't finished running.
-        executionComplete = true;
+        // The command just started running.
+        this.isFinished = false;
 
-        // Get and add the first scheduled command to the list of active commands.
-        activeCommand = this.getCommandAtIndex(0);
+        // Setup the starting command for the command group.
+        // If a valid starting command has been provided, use that.
+        // Otherwise use the first command added to the group.
+        if (startingCommandID != null && this.SCHEDULED_COMMANDS.get(startingCommandID) != null) {
+            this.activeCommandID = startingCommandID;
+        } else {
+            this.activeCommandID = getCommandAtIndex(0).getID();
+        }
+    }
+
+    /**
+     * Sets which command will run first when this command group is run.
+     *
+     * @param startingCommandID The ID of the command that will be run first.
+     */
+    public void setStartingCommandID(String startingCommandID) {
+        this.startingCommandID = startingCommandID;
+    }
+
+    /**
+     * Stops the specified commands and marks it as stopped.
+     *
+     * @param commandToRemove The ID of the command to stop.
+     * @param interrupted A flag indicating whether the stop was due to an interruption.
+     */
+    public void stopCommand(String commandToRemove, boolean interrupted) {
+        CommandBase command = SCHEDULED_COMMANDS.get(commandToRemove);
+        CommandState commandState = COMMAND_STATES.get(commandToRemove);
+
+        // Stops the command if it can be found.
+        if (commandState != null && command != null) {
+            commandState.setStatus(CommandStatus.STOPPED);
+            command.end(interrupted);
+            activeCommandID = null;
+        }
+    }
+
+    /**
+     * Activates the specified command and sets its status to RUNNING.
+     *
+     * @param commandToSchedule The ID of the command to activate.
+     */
+    public void activateCommand(String commandToSchedule) {
+        CommandBase command = SCHEDULED_COMMANDS.get(commandToSchedule);
+        CommandState commandState = COMMAND_STATES.get(commandToSchedule);
+
+        // Starts the command if it can be found.
+        if (commandState != null && command != null) {
+            commandState.setStatus(CommandStatus.RUNNING);
+            command.init();
+            activeCommandID = commandToSchedule;
+        }
     }
 
     @Override
     public void execute() throws NullCommandException, UnscheduledCommandException {
 
-        // If all the commands have finished running or doesn't exist, then return.
-        if (executionComplete || activeCommand == null) {
+        // If there isn't a active command, this command group has finished running.
+        if (this.activeCommandID == null) {
+            this.isFinished = true;
             return;
+        }
+
+        // If told to emergency stop, immediately halt operations.
+        if (emergencyStop) {
+            stopAll();
+            return;
+        }
+
+        // Attempt to locate the command with the given ID.
+        CommandBase activeCommand = SCHEDULED_COMMANDS.get(activeCommandID);
+
+        // Throw an error if no command exists with the given ID.
+        if (activeCommand == null) {
+            throw new UnscheduledCommandException(activeCommandID);
         }
 
         // Check whether or not the command has finished running.
         if (activeCommand.isFinished()) {
 
             // Get the next command that should be run.
-            CommandBase nextCommand = getNextCommand();
+            CommandBase nextCommand = getNextCommand(activeCommand);
 
-            // If the nextCommand isn't a stop command, call the nextCommand's init method and
-            // add it to the command activation queue.
-            if (!(nextCommand instanceof StopCommand)) {
-                nextCommand.init();
-            } else {
-                executionComplete = true; // This command group has finished running all of its commands.
+            // Stop the active command.
+            stopCommand(activeCommandID, false);
+
+            // If the next command is a stop command, this command group has finished running.
+            if (nextCommand instanceof StopCommand) {
+                isFinished = true;
+                return;
             }
 
-            // Call this command's "end" method and add it to the command removal queue.
-            activeCommand.end(false);
-        } else {
+            // Start the next command.
+            activateCommand(nextCommand.getID());
 
-            // Run the active command.
-            activeCommand.execute();
+            // Stop running the rest of the code, since the formerly active command is no longer active.
+            return;
         }
+
+        // Run the active command.
+        activeCommand.execute();
     }
 
     /**
-     * Returns which command should be run next according to the active command.
+     * Determines the next command to run after the completion of a given command.
      *
-     * @return The command that should run next.
-     * @throws UnscheduledCommandException If the a command with the returned command ID that should be run next hasn't been scheduled.
-     * @throws NullCommandException If the directive the terminating command gives returns null.
+     * @param terminatingCommand The command that has finished execution.
+     * @return The next command to execute.
+     * @throws UnscheduledCommandException If the next command is not scheduled.
+     * @throws NullCommandException If the next command is null.
      */
-    private CommandBase getNextCommand() throws UnscheduledCommandException, NullCommandException {
+    private CommandBase getNextCommand(CommandBase terminatingCommand) throws UnscheduledCommandException, NullCommandException {
 
         // Get the command result from the terminating command,
-        CommandResult commandResult = activeCommand.getCommandResult();
+        CommandResult commandResult = terminatingCommand.getCommandResult();
         CommandBase nextCommand;
 
         // If the CommandResult contains a CommandID, attempt to find a command with the specified ID in
@@ -74,7 +158,7 @@ public class SequentialCommandGroup extends CommandGroupBase {
         if (commandResult.isCommand()) {
 
             // Attempt to get the specified command.
-            nextCommand = SCHEDULED_COMMANDS.get(commandResult.getCommandID());
+            nextCommand = this.SCHEDULED_COMMANDS.get(commandResult.getCommandID());
 
             // If the command with the specified ID hasn't been scheduled, throw an error.
             // Otherwise, return the located command.
@@ -87,7 +171,7 @@ public class SequentialCommandGroup extends CommandGroupBase {
             // If the command with the specified ID hasn't been scheduled, throw an error.
             // Otherwise, return the located command.
             if (nextCommand == null) {
-                throw new NullCommandException(activeCommand.getID());
+                throw new NullCommandException(terminatingCommand.getID());
             }
         }
 
@@ -97,64 +181,39 @@ public class SequentialCommandGroup extends CommandGroupBase {
 
     @Override
     public boolean isFinished() {
-        return executionComplete;
+        return isFinished;
     }
 
     @Override
     public void end(boolean interrupted) {
 
-        // Stop all of the currently running commands.
-        stopAll();
-    }
-
-    /**
-     * Schedules the given command.
-     *
-     * @param command The command that will be scheduled.
-     */
-    public void scheduleCommand(CommandBase command) {
-
-        // Set the parent of the added command.
-        command.setParentID(this);
-
-        // Schedule the command.
-        this.SCHEDULED_COMMANDS.put(command.getID(), command);
-    }
-
-    /**
-     * Unschedules the given command.
-     *
-     * @param command The command that will be unscheduled.
-     */
-    public void unscheduleCommand(CommandBase command) {
-
-        // If the active command is being unscheduled, then run its end function and remove the active command.
-        if (this.activeCommand == command) {
-            this.activeCommand.end(true);
-            this.activeCommand = null;
-        }
-
-        // If the command has been scheduled, unschedule it.
-        if (this.SCHEDULED_COMMANDS.get(command.getID()) != null) {
-            this.SCHEDULED_COMMANDS.remove(command.getID());
-        }
     }
 
     @Override
-    public void scheduleCommand(CommandBase commandBase, int priority, Subsystem... requiredSubsystems) {
+    public void scheduleCommand(CommandBase command, int priority, Subsystem... requiredSubsystems) {
 
+        // Set the command's parent.
+        command.setParent(this);
+
+        // Add command to the schedule.
+        this.SCHEDULED_COMMANDS.put(command.getID(), command);
+
+        // Create and store the command's state.
+        CommandState commandState = new CommandState(command.getID(), new HashSet<>(Arrays.asList(requiredSubsystems)), CommandStatus.STOPPED, priority);
+        this.COMMAND_STATES.put(command.getID(), commandState);
+
+        // Update the subsystem usage map with the required subsystems.
+        for (Subsystem subsystem : requiredSubsystems) {
+            this.SUBSYSTEM_USAGE_MAP.computeIfAbsent(subsystem, k -> new ArrayList<>()).add(commandState);
+        }
     }
 
     /**
-     * Stops the currently running command
+     * Stop all actively running commands.
      */
     @Override
     public void stopAll() {
-
-        // Stop the currently running command.
-        activeCommand.end(true);
-
-        // No command is actively running.
-        activeCommand = null;
+        emergencyStop = true;
+        stopCommand(activeCommandID, true);
     }
 }

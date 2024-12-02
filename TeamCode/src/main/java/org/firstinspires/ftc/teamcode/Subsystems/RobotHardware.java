@@ -36,7 +36,7 @@ public class RobotHardware implements Subsystem {
 
     @Override
     public void periodic() {
-        // this.drivetrain.periodic();
+        this.drivetrain.periodic();
         this.robotArm.periodic();
     }
 }

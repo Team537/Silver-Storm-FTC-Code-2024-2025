@@ -4,6 +4,7 @@ import androidx.annotation.NonNull;
 
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.IMU;
 
@@ -16,8 +17,8 @@ import org.firstinspires.ftc.teamcode.Utility.Geometry.Rotation2d;
 public class CoordinateSystem implements Subsystem {
 
     // Settings
-    private final double PARALLEL_ODOMETRY_POD_DISTANCE_TO_CENTER_METERS = 0; // TODO: Measure, from center of robot to center of ???
-    private final double PERPENDICULAR_ODOMETRY_POD_DISTANCE_TO_CENTER_METERS = 0; // TODO: Measure, from center of robot to center of ???
+    private final double PARALLEL_ODOMETRY_POD_DISTANCE_TO_CENTER_METERS = -0.1138672902;
+    private final double PERPENDICULAR_ODOMETRY_POD_DISTANCE_TO_CENTER_METERS = -0.003570541649;
 
     // Hardware Storage
     private OdometryPod parallelOdometryPod;
@@ -29,6 +30,7 @@ public class CoordinateSystem implements Subsystem {
     private double robotXCoordinate = 0;
     private double robotZCoordinate = 0;
     private double robotHeading = 0;
+    private double totalRotationalChange = 0;
 
     // General Storage
     private Telemetry telemetry;
@@ -87,6 +89,7 @@ public class CoordinateSystem implements Subsystem {
         // Initialize the IMU
         imu = hardwareMap.get(IMU.class, "imu");
         imu.initialize(imuSettings);
+        imu.resetYaw();
 
         // Store the robot's telemetry so that it can be used later.
         this.telemetry = telemetry;
@@ -152,6 +155,13 @@ public class CoordinateSystem implements Subsystem {
         double currentRobotHeadingRadians = getRobotHeadingRadians();
         double rotationalChangeRadians = currentRobotHeadingRadians - robotHeading;
 
+        // Normalize the rotational change to the range [-PI, PI]
+        if (rotationalChangeRadians <= -Math.PI) {
+            rotationalChangeRadians += 2 * Math.PI;
+        } else if (rotationalChangeRadians > Math.PI) {
+            rotationalChangeRadians -= 2 * Math.PI;
+        }
+
         // Calculate the arc length each odometry wheel traveled. This is the distance the encoders traveled due to rotation.
         double parallelArcLengthMeters = PARALLEL_ODOMETRY_POD_DISTANCE_TO_CENTER_METERS * rotationalChangeRadians;
         double perpendicularArcLengthMeters = PERPENDICULAR_ODOMETRY_POD_DISTANCE_TO_CENTER_METERS * rotationalChangeRadians;
@@ -178,16 +188,17 @@ public class CoordinateSystem implements Subsystem {
     @Override
     public void periodic() {
 
-        // Update the robot's position.
-        updatePosition();
-
         // Call the odometry pod's periodic methods.
         parallelOdometryPod.periodic();
         perpendicularOdometryPod.periodic();
+
+        // Update the robot's position.
+        updatePosition();
 
         // Display the robot's position on the telemetry.
         telemetry.addLine("Robot X (m): " + robotXCoordinate);
         telemetry.addLine("Robot Z (m): " + robotZCoordinate);
         telemetry.addLine("Robot Heading (°): " + (robotHeading / Math.PI * 180));
+        telemetry.addLine("Total Rotational Change: " + (totalRotationalChange / Math.PI * 180));
     }
 }

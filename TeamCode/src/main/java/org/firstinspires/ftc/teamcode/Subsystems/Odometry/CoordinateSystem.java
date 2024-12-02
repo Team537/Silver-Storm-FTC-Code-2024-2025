@@ -120,7 +120,7 @@ public class CoordinateSystem implements Subsystem {
      * @return This CoordinateSystem's x coordinate in meters.
      */
     public double getRobotXCoordinateMeters() {
-        return robotXCoordinate;
+        return this.robotXCoordinate;
     }
 
     /**
@@ -129,7 +129,7 @@ public class CoordinateSystem implements Subsystem {
      * @return This CoordinateSystem's z coordinate in meters.
      */
     public double getRobotZCoordinateMeters() {
-        return robotZCoordinate;
+        return this.robotZCoordinate;
     }
 
     /**
@@ -148,7 +148,7 @@ public class CoordinateSystem implements Subsystem {
     private void updatePosition() {
 
         // Get how far each odometry pod moved in meters.
-        double parallelOdometryPodPositionalChange = parallelOdometryPod.getPositionalChangeMeters();
+        double parallelOdometryPodPositionalChange = -parallelOdometryPod.getPositionalChangeMeters();
         double perpendicularOdometryPodPositionalChange = perpendicularOdometryPod.getPositionalChangeMeters();
 
         // Account for the change in position the encoders would experience from the robot rotating.
@@ -163,7 +163,7 @@ public class CoordinateSystem implements Subsystem {
         }
 
         // Calculate the arc length each odometry wheel traveled. This is the distance the encoders traveled due to rotation.
-        double parallelArcLengthMeters = PARALLEL_ODOMETRY_POD_DISTANCE_TO_CENTER_METERS * rotationalChangeRadians;
+        double parallelArcLengthMeters = -PARALLEL_ODOMETRY_POD_DISTANCE_TO_CENTER_METERS * rotationalChangeRadians;
         double perpendicularArcLengthMeters = PERPENDICULAR_ODOMETRY_POD_DISTANCE_TO_CENTER_METERS * rotationalChangeRadians;
 
         // Calculate the local positional changes of each wheel.

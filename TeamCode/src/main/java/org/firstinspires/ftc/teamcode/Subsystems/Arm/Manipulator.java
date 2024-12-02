@@ -14,7 +14,7 @@ public class Manipulator implements Subsystem {
     // Hardware Storage
     private CRServo intakeServo;
     private CRServo wristServo;
-    private ServoController wristServoController;
+    private ServoController servoController;
 
     // Storage
     private Telemetry telemetry;
@@ -48,12 +48,9 @@ public class Manipulator implements Subsystem {
      */
     private void setupHardware(HardwareMap hardwareMap) {
         intakeServo = hardwareMap.get(CRServo.class, "intakeServo");
-        intakeServo.setDirection(DcMotorSimple.Direction.REVERSE);
 
         wristServo = hardwareMap.get(CRServo.class, "wristServo");
-        wristServoController = wristServo.getController();
-        wristServoController.pwmDisable(); // Enable position mode.
-        // wristServo.setDirection(DcMotorSimple.Direction.REVERSE); TODO: Check if needed
+        servoController = wristServo.getController();
     }
 
     /**
@@ -75,22 +72,26 @@ public class Manipulator implements Subsystem {
         this.targetPosition = wristPosition;
 
         // Set the target angle for the wrist.
-        this.wristServoController.setServoPosition(0, this.targetPosition.getWristAnglePosition());
+        this.servoController.setServoPosition(3, this.targetPosition.getWristAnglePosition());
     }
+
+    public void setWristPosition(double theta) {
+        double position = 0.5 + ((theta / 90) * 0.5);
+        servoController.setServoPosition(3, position);
+    }
+
     /**
      * Adjusts the hardware such that it begins intaking samples.
      */
     public void intake() {
-        //intakeServo.setPower(1);
-        wristServo.setPower(0.5);
+        servoController.setServoPosition(4, 1);
     }
 
     /**
      * Adjusts the hardware such that it begins outtaking samples.
      */
     public void outtake() {
-       // intakeServo.setPower(-1);
-        wristServo.setPower(-0.5);
+        servoController.setServoPosition(4, 0);
     }
 
     /**
@@ -107,9 +108,5 @@ public class Manipulator implements Subsystem {
         if (this.eStopped) {
             return;
         }
-
-        // Output the wrist's current position.
-        telemetry.addLine("Wrist Position: " + wristServoController.getServoPosition(wristServo.getPortNumber()));
-        telemetry.addLine("Wrist Position: " + wristServoController.getServoPosition(wristServo.getPortNumber()));
     }
 }

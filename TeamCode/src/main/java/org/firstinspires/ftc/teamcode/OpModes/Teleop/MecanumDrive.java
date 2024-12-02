@@ -25,7 +25,6 @@ public class MecanumDrive extends LinearOpMode {
 
         // Wait for the OpMode to be started.
         waitForStart();
-        double power = 0;
 
         // While the opmode is active, allow the robot to be controlled by the driver and display
         // useful diagnostic information.
@@ -34,25 +33,26 @@ public class MecanumDrive extends LinearOpMode {
             // Print out the opMode's current runtime.
             telemetry.addLine("———— Runtime: " + this.getRuntime() + "s —————" );
 
-            // Call all subsystem's periodic methods .
-            robotHardware.periodic();
-
             // Update controllers.
             previousGamepad.copy(currentGamepad);
             currentGamepad.copy(gamepad1);
 
             // Arm position and movement.
             if (currentGamepad.dpad_down && !previousGamepad.dpad_down) {
-                robotHardware.robotArm.setTargetPosition(ArmPositions.FLOOR_POSITION);
+                //robotHardware.robotArm.setTargetPosition(ArmPositions.FLOOR_POSITION);
+                robotHardware.robotArm.getManipulator().setWristPosition(-90);
             }
             if (currentGamepad.dpad_up && !previousGamepad.dpad_up) {
-                robotHardware.robotArm.setTargetPosition(ArmPositions.HIGH_BASKET);
+                robotHardware.robotArm.getManipulator().setWristPosition(90);
+                //robotHardware.robotArm.setTargetPosition(ArmPositions.HIGH_BASKET);
             }
             if (currentGamepad.dpad_right && !previousGamepad.dpad_right) {
-                robotHardware.robotArm.setTargetPosition(ArmPositions.CENTER_CROSS);
+                robotHardware.robotArm.getManipulator().setWristPosition(45);
+                //robotHardware.robotArm.setTargetPosition(ArmPositions.CENTER_CROSS);
             }
             if (currentGamepad.dpad_left && !previousGamepad.dpad_left) {
-                robotHardware.robotArm.setTargetPosition(ArmPositions.LOW_BASKET);
+                robotHardware.robotArm.getManipulator().setWristPosition(-45);
+                //robotHardware.robotArm.setTargetPosition(ArmPositions.LOW_BASKET);
             }
 
             // Toggle whether or not the robot will drive using velocity.
@@ -80,7 +80,7 @@ public class MecanumDrive extends LinearOpMode {
             }
 
             if (currentGamepad.b && !previousGamepad.b) {
-                robotHardware.robotArm.getManipulator().stopIntake();
+                robotHardware.robotArm.getManipulator().setWristPosition(0);
             }
 
             // Drive the robot based on user inputs.

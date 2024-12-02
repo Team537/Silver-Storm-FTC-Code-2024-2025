@@ -3,35 +3,13 @@ package org.firstinspires.ftc.teamcode.Utility.Controllers;
 import org.firstinspires.ftc.teamcode.Utility.Time.ElapsedTime;
 import org.firstinspires.ftc.teamcode.Utility.Time.TimeUnit;
 
-public class PIDController {
-
-    // PID Coefficients
-    protected double kp;
-    protected double ki;
-    protected double kd;
-    protected double errorTolerance;
-
-    // Storage
-    protected double accumulatedError;
-    protected double previousError;
-    protected double lastTarget;
-    protected ElapsedTime elapsedTime;
+public class RotationalPIDController extends PIDController {
 
     /**
      * Create a new PIDController object with empty PID coefficients.
      */
-    public PIDController() {
-
-        // Set all PID coefficients to 0, since no values were provided.
-        this.kp = 0;
-        this.ki = 0;
-        this.kd = 0;
-
-        // Setup the Elapsed Time object.
-        this.elapsedTime = new ElapsedTime();
-
-        // Setup the error values.
-        this.reset();
+    public RotationalPIDController() {
+        super();
     }
 
     /**
@@ -39,59 +17,25 @@ public class PIDController {
      * @param kp Helps prevents overshooting the target
      * @param kd Help prevent oscillation (Value changing rapidly back and forth).
      * @param ki Helps prevent steady state error. (Helps overcome obstacles are consistently
-                 blocking it off.
+    blocking it off.
      */
-    public PIDController(double kp, double kd, double ki) {
-
-        // Set all PID coefficients to the given values.
-        this.kp = kp;
-        this.ki = ki;
-        this.kd = kd;
-
-        // Setup the Elapsed Time object.
-        this.elapsedTime = new ElapsedTime();
-
-        // Setup the error values.
-        this.reset();
+    public RotationalPIDController(double kp, double kd, double ki) {
+        super(kp, ki, kd);
     }
 
-    public void setKd(double kd) {
-        this.kd = kd;
-    }
-
-    public void setKi(double ki) {
-        this.ki = ki;
-    }
-
-    public void setKp(double kp) {
-        this.kp = kp;
-    }
-
-    /**
-     * Reset all of the PIDControllers values.
-     */
-    public void reset() {
-        this.accumulatedError = 0;
-        this.previousError = 0;
-        this.lastTarget = 0;
-        this.elapsedTime.reset();
-    }
-
-    public void setErrorTolerance(double errorTolerance) {
-        this.errorTolerance = errorTolerance;
-    }
-
+    @Override
     public double update(double targetValue, double currentValue) {
 
-        // Calculate the error between our current value and our target value.
+        // Calculate the error between our current value and our target value and clamp the angular value.
         double error = targetValue - currentValue;
+        error = clampAngle(error);
 
         // Add our current error * delta time to our accumulated error. This helps us visualize how much error is
         // accumulated over time.
         this.accumulatedError += (error * elapsedTime.getElapsedTime(TimeUnit.SECOND));
 
         // Compensate for if it is more efficient to go in the other direction.
-        // accumulatedError = Math.abs(accumulatedError) * Math.signum(error);
+        accumulatedError = Math.abs(accumulatedError) * Math.signum(error);
 
         // Calculate how quickly the error is increasing / decreasing.
         double errorRateOfChange = (error - previousError) / elapsedTime.getElapsedTime(TimeUnit.SECOND);
@@ -120,4 +64,20 @@ public class PIDController {
         return Math.tanh(kp * error + (ki * accumulatedError) + (kd * errorRateOfChange));
     }
 
+    /**
+     * Clamp the given angle to within the given bounds.
+     *
+     * @param angleRadians The angle that needs to be clamped, in radians.
+     * @return The clamped angle.
+     */
+    private double clampAngle(double angleRadians) {
+        double outputAngleRadians = angleRadians;
+        while (outputAngleRadians <= -Math.PI) {
+            outputAngleRadians += 2 * Math.PI;
+        }
+        while (outputAngleRadians > Math.PI) {
+            outputAngleRadians -= 2 * Math.PI;
+        }
+        return outputAngleRadians;
+    }
 }

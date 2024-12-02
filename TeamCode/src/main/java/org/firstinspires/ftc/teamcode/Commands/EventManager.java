@@ -1,7 +1,7 @@
 package org.firstinspires.ftc.teamcode.Commands;
 
 import org.firstinspires.ftc.teamcode.Commands.Events.EventCommand;
-import org.firstinspires.ftc.teamcode.Commands.Events.EventListener;
+import org.firstinspires.ftc.teamcode.Commands.Events.EventListeners.EventListener;
 import org.firstinspires.ftc.teamcode.Exceptions.UnscheduledCommandException;
 import org.firstinspires.ftc.teamcode.Subsystems.Subsystem;
 

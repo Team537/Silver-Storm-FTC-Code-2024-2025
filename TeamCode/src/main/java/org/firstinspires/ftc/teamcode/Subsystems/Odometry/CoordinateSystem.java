@@ -40,7 +40,7 @@ public class CoordinateSystem implements Subsystem {
 
         // Create this coordinate system's odometry pods.
         this.parallelOdometryPod = new OdometryPod("paraOdPod");
-        this.parallelOdometryPod = new OdometryPod("perpOdPod");
+        this.perpendicularOdometryPod = new OdometryPod("perpOdPod");
 
         // Set the robot's position.
         this.robotPosition = new Pose2d();
@@ -56,7 +56,7 @@ public class CoordinateSystem implements Subsystem {
 
         // Create this coordinate system's odometry pods.
         this.parallelOdometryPod = new OdometryPod("paraOdPod");
-        this.parallelOdometryPod = new OdometryPod("perpOdPod");
+        this.perpendicularOdometryPod = new OdometryPod("perpOdPod");
 
         // Set the robot's position.
         this.robotPosition = startingPosition.clone();

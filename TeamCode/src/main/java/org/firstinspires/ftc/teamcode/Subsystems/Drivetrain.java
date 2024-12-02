@@ -69,6 +69,9 @@ public class Drivetrain implements Subsystem{
         setupHardware(hardwareMap);
         this.telemetry = telemetry;
 
+        // Enable the coordinate system
+        coordinateSystem.init(hardwareMap, telemetry);
+        
         // Set the robot's position.
         robotPosition = new Pose2d();
     }
@@ -304,5 +307,6 @@ public class Drivetrain implements Subsystem{
 
     @Override
     public void periodic() {
+        coordinateSystem.periodic();
     }
 }

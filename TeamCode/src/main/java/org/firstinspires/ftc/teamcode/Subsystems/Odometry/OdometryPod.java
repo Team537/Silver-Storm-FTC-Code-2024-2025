@@ -104,6 +104,7 @@ public class OdometryPod implements Subsystem {
 
     @Override
     public void periodic() {
+        telemetry.addLine(this.ODOMETRY_POD_ENCODER_NAME + " Position (m):" + this.throughBoreEncoder.getCurrentPosition());
         telemetry.addLine(this.ODOMETRY_POD_ENCODER_NAME + " Velocity (m/s):" + this.currentVelocity);
     }
 }

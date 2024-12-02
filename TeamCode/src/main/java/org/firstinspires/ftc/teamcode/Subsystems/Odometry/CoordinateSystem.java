@@ -1,10 +1,6 @@
 package org.firstinspires.ftc.teamcode.Subsystems.Odometry;
 
-import androidx.annotation.NonNull;
-
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
-import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.IMU;
 
@@ -12,7 +8,6 @@ import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.teamcode.Subsystems.Subsystem;
 import org.firstinspires.ftc.teamcode.Utility.Geometry.Pose2d;
-import org.firstinspires.ftc.teamcode.Utility.Geometry.Rotation2d;
 
 public class CoordinateSystem implements Subsystem {
 
@@ -30,7 +25,10 @@ public class CoordinateSystem implements Subsystem {
     private double robotXCoordinate = 0;
     private double robotZCoordinate = 0;
     private double robotHeading = 0;
-    private double totalRotationalChange = 0;
+
+    // Rotational Offsets
+    private double orientationOffset = 0;
+    private double driveRotationalOffset = 0;
 
     // General Storage
     private Telemetry telemetry;
@@ -48,7 +46,9 @@ public class CoordinateSystem implements Subsystem {
         this.robotPosition = new Pose2d();
         this.robotXCoordinate = 0;
         this.robotZCoordinate = 0;
-        this.robotHeading = 0; // TODO: Do IMU stuff!
+
+        this.robotHeading = 0;
+        this.orientationOffset = 0;
     }
 
     /**
@@ -64,7 +64,10 @@ public class CoordinateSystem implements Subsystem {
         this.robotPosition = startingPosition.clone();
         this.robotXCoordinate = startingPosition.getX();
         this.robotZCoordinate = startingPosition.getZ();
-        this.robotHeading = startingPosition.getYawInRadians(); // TODO: Do IMU stuff!
+
+        // Set an offset for the IMU so that it knows which direction it's facing.
+        this.robotHeading = clampAngle(startingPosition.getYawInRadians());
+        this.orientationOffset = clampAngle(startingPosition.getYawInRadians());
     }
 
     /**
@@ -96,11 +99,19 @@ public class CoordinateSystem implements Subsystem {
     }
 
     /**
+     * Sets an offset for the driver making it possible for them to drive in a field centric mode
+     * relative to any angle they wish without interfering with the coordinate system or autonomous actions.
+     */
+    public void resetIMU() {
+        this.driveRotationalOffset = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
+    }
+
+    /**
      * Return this CoordinateSystem's position as a Pose2d.
      *
      * @return This CoordinateSystem's position as a Pose2d.
      */
-    public Pose2d getRobotPosition() {
+    public synchronized Pose2d getRobotPosition() {
         return this.robotPosition;
     }
 
@@ -110,7 +121,7 @@ public class CoordinateSystem implements Subsystem {
      * @param position The position that the distance to will be found.
      * @return The distance to the given position and return the result as a new Pose2d.
      */
-    public Pose2d getDistanceTo(Pose2d position) {
+    public synchronized Pose2d getDistanceTo(Pose2d position) {
         return this.robotPosition.getDistanceTo(position);
     }
 
@@ -119,7 +130,7 @@ public class CoordinateSystem implements Subsystem {
      *
      * @return This CoordinateSystem's x coordinate in meters.
      */
-    public double getRobotXCoordinateMeters() {
+    public synchronized double getRobotXCoordinateMeters() {
         return this.robotXCoordinate;
     }
 
@@ -128,7 +139,7 @@ public class CoordinateSystem implements Subsystem {
      *
      * @return This CoordinateSystem's z coordinate in meters.
      */
-    public double getRobotZCoordinateMeters() {
+    public synchronized double getRobotZCoordinateMeters() {
         return this.robotZCoordinate;
     }
 
@@ -137,8 +148,38 @@ public class CoordinateSystem implements Subsystem {
      *
      * @return This CoordinateSystem's heading in radians.
      */
-    public double getRobotHeadingRadians() {
-        return imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
+    public synchronized double getRobotHeadingRadians(boolean useDriverOffset) {
+
+        // Get the angle from the IMU.
+        double robotHeading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
+
+        // If the rotation is being used for the driver, use the driver IMU offset. Otherwise, use
+        // the orientation offset set by all autonomous functionality
+        if (useDriverOffset) {
+            robotHeading += driveRotationalOffset;
+        } else {
+            robotHeading += orientationOffset;
+        }
+
+        // Clamp the angle to within -pi and pi and return the robot's heading.
+        return clampAngle(robotHeading);
+    }
+
+    /**
+     * Clamp the given angle to within the given bounds.
+     *
+     * @param angleRadians The angle that needs to be clamped, in radians.
+     * @return The clamped angle.
+     */
+    private double clampAngle(double angleRadians) {
+        double outputAngleRadians = angleRadians;
+        while (outputAngleRadians <= -Math.PI) {
+            outputAngleRadians += 2 * Math.PI;
+        }
+        while (outputAngleRadians > Math.PI) {
+            outputAngleRadians -= 2 * Math.PI;
+        }
+        return outputAngleRadians;
     }
 
     /**
@@ -152,7 +193,7 @@ public class CoordinateSystem implements Subsystem {
         double perpendicularOdometryPodPositionalChange = perpendicularOdometryPod.getPositionalChangeMeters();
 
         // Account for the change in position the encoders would experience from the robot rotating.
-        double currentRobotHeadingRadians = getRobotHeadingRadians();
+        double currentRobotHeadingRadians = getRobotHeadingRadians(false);
         double rotationalChangeRadians = currentRobotHeadingRadians - robotHeading;
 
         // Normalize the rotational change to the range [-PI, PI]
@@ -199,6 +240,5 @@ public class CoordinateSystem implements Subsystem {
         telemetry.addLine("Robot X (m): " + robotXCoordinate);
         telemetry.addLine("Robot Z (m): " + robotZCoordinate);
         telemetry.addLine("Robot Heading (°): " + (robotHeading / Math.PI * 180));
-        telemetry.addLine("Total Rotational Change: " + (totalRotationalChange / Math.PI * 180));
     }
 }

@@ -149,7 +149,7 @@ public class Drivetrain implements Subsystem{
      * Resets the IMU such that the robot believes it is facing the zero direction.
      */
     public void resetIMU() {
-        // TODO: Add functionality.
+        this.coordinateSystem.resetIMU();
     }
 
     /**
@@ -171,7 +171,7 @@ public class Drivetrain implements Subsystem{
         if (fieldCentricEnabled ) {
 
             // Store the robot's rotation.
-            double robotYawRadians = coordinateSystem.getRobotHeadingRadians();
+            double robotYawRadians = coordinateSystem.getRobotHeadingRadians(true);
 
             // Rotate the velocity value
             xMotion = (xInput * Math.cos(-robotYawRadians)) - (zInput * Math.sin(-robotYawRadians));
@@ -328,28 +328,13 @@ public class Drivetrain implements Subsystem{
         return velocityDriveEnabled;
     }
 
-    public void toggleAutonomousControl() {
-        this.autonomousControlActive = !autonomousControlActive;
-
-        // If no longer driving autonomously, stop the robot.
-        if (!autonomousControlActive) {
-            setMotorPower(0, 0, 0, 0);
-        }
-    }
-    public void setRotationalPID(double kp, double ki, double kd) {
-        this.rotationalPIDController.setKp(kp);
-        this.rotationalPIDController.setKi(ki);
-        this.rotationalPIDController.setKd(kd);
-    }
-
-    public void setDriveToPositionPID(double kp, double ki, double kd) {
-        this.xPIDController.setKp(kp);
-        this.xPIDController.setKi(ki);
-        this.xPIDController.setKd(kd);
-
-        this.zPIDController.setKp(kp);
-        this.zPIDController.setKi(ki);
-        this.zPIDController.setKd(kd);
+    /**
+     * Toggles whether or not this device can operate autonomously.
+     *
+     * @param autonomousControlActive Whether or not the robot can drive autonomously.
+     */
+    public void toggleAutonomousControl(boolean autonomousControlActive) {
+        this.autonomousControlActive = autonomousControlActive;
     }
 
     /**
@@ -377,7 +362,7 @@ public class Drivetrain implements Subsystem{
     private void calculateNewMotorPower() {
 
         // Store the robot's rotation.
-        double robotYawRadians = coordinateSystem.getRobotHeadingRadians();
+        double robotYawRadians = coordinateSystem.getRobotHeadingRadians(false);
 
         // Calculate the necessary motor powers to drive the robot.
         double rotationalMotion = -this.rotationalPIDController.update(this.targetPosition.getYawInRadians(), robotYawRadians);
@@ -388,6 +373,7 @@ public class Drivetrain implements Subsystem{
         double rotatedXMotion = (xMotion * Math.cos(-robotYawRadians)) - (zMotion * Math.sin(-robotYawRadians));
         double rotatedZMotion = (xMotion * Math.sin(-robotYawRadians)) + (zMotion * Math.cos(-robotYawRadians));
 
+        // Account for imperfect straifing.
         rotatedXMotion *= 1.1;
 
         // The scalingFactor is the largest motor power / velocity.
@@ -405,8 +391,6 @@ public class Drivetrain implements Subsystem{
         double frontLeftSpeed = (rotatedXMotion + rotatedZMotion + rotationalMotion) / scalingFactor;
         double backLeftSpeed = (rotatedXMotion - rotatedZMotion + rotationalMotion) / scalingFactor;
 
-        telemetry.addLine("Hit!");
-
         // Set the robot's motor powers.
         setMotorPower(frontRightSpeed, backRightSpeed, frontLeftSpeed, backLeftSpeed);
     }
@@ -417,6 +401,7 @@ public class Drivetrain implements Subsystem{
         // Call other subsystem's periodic methods.
         coordinateSystem.periodic();
 
+        // Output diagnostic data.
         telemetry.addLine("Target X (m): " + targetPosition.getX());
         telemetry.addLine("Target Z (m): " + targetPosition.getZ());
         telemetry.addLine("Target Rotation: " + (targetPosition.getYawInRadians() * 180 / Math.PI));

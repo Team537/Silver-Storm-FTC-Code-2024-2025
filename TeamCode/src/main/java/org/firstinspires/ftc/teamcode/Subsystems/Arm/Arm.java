@@ -11,8 +11,8 @@ import org.firstinspires.ftc.teamcode.Utility.Controllers.PIDController;
 public class Arm implements Subsystem {
 
     // Settings
-    private double ticksToRadians = 0.00557019974;
-    private double starting_angle_radians = -1.02974; //-1.02974;
+    private double ticksToRadians = 0.00308354937;
+    private double starting_angle_radians = -1.09956;
 
     // Subsystem Storage
     private LinearSlides linearSlides;
@@ -24,11 +24,11 @@ public class Arm implements Subsystem {
 
     // Controller Storage
     private PIDController pidController;
-    private final double PROPORTIONAL_COEFFICIENT = 0.05;
+    private final double PROPORTIONAL_COEFFICIENT = 0.45;
     private final double INTEGRAL_COEFFICIENT = 0;
-    private final double DERIVATIVE_COEFFICIENT = 0.001;
-    private final double GRAVITATIONAL_COMPENSATION_CONSTANT = 0.021;
-    private final double SLIDE_EXTENSION_CONSTANT = 0.5053;
+    private final double DERIVATIVE_COEFFICIENT = 0.005;
+    private final double GRAVITATIONAL_COMPENSATION_CONSTANT = 0.001534591461;
+    private final double SLIDE_EXTENSION_CONSTANT = 0.0002310248908;
 
     // General Storage
     private ArmPositions currentTargetArmPosition;
@@ -36,6 +36,7 @@ public class Arm implements Subsystem {
 
     // FLags
     private boolean eStopped = false;
+    private boolean active = false;
 
     /**
      * Sets up this subsystem so that it can function.
@@ -49,14 +50,14 @@ public class Arm implements Subsystem {
     public void init(HardwareMap hardwareMap, Telemetry telemetry) {
 
         // Setup Subsystems.
-        this.linearSlides = new LinearSlides(this::getArmAngle);
+        this.linearSlides = new LinearSlides();
         this.linearSlides.init(hardwareMap, telemetry);
 
         this.manipulator = new Manipulator();
         this.manipulator.init(hardwareMap, telemetry);
 
         // Setup the PID controller
-        this.pidController = new PIDController(PROPORTIONAL_COEFFICIENT, INTEGRAL_COEFFICIENT, DERIVATIVE_COEFFICIENT);
+        this.pidController = new PIDController(PROPORTIONAL_COEFFICIENT, DERIVATIVE_COEFFICIENT, INTEGRAL_COEFFICIENT);
         this.pidController.setErrorTolerance(0.0174533);
 
         // Setup the hardware.
@@ -106,7 +107,7 @@ public class Arm implements Subsystem {
         double feedforwards = (GRAVITATIONAL_COMPENSATION_CONSTANT * Math.cos(armAngle)) +
                 (SLIDE_EXTENSION_CONSTANT * slideExtensionLength);
 
-        double motorPower =feedforwards + calculatedFeedbackMotorPower;
+        double motorPower = feedforwards + calculatedFeedbackMotorPower;
 
         // Set the motor power of the arm motor.
         this.armMotor.setPower(motorPower);
@@ -130,17 +131,13 @@ public class Arm implements Subsystem {
         return starting_angle_radians + (armMotor.getCurrentPosition() * ticksToRadians);
     }
 
-    public void adjustForState() {
-
-        // Acquire necessary values to counteract both gravity and the slide extension length.
-        double armAngle = getArmAngle();
-        double slideExtensionLength = this.linearSlides.getExtensionDistance();
-
-        // Calculate the feedforwards value to compensate for slide extension length and gravity.
-        double feedforwards = (GRAVITATIONAL_COMPENSATION_CONSTANT * Math.cos(armAngle)) +
-                (SLIDE_EXTENSION_CONSTANT * slideExtensionLength);
-
-        armMotor.setPower(feedforwards);
+    /**
+     * Sets the motor power of this arm to enable manuel control of the motor.
+     *
+     * @param power The motor power the arm will be set to.
+     */
+    public void setPower(double power) {
+        this.armMotor.setPower(power);
     }
 
     /**
@@ -161,20 +158,21 @@ public class Arm implements Subsystem {
         return manipulator;
     }
 
-    public void setP(double p) {
-        this.pidController.setKp(p);
+    /**
+     * Toggles the autonomous control of this subsystem.
+     */
+    public void toggleActive() {
+        active = !active;
     }
 
-    public void setD(double d) {
-        this.pidController.setKd(d);
-    }
-
-    public void setI(double i) {
-        this.pidController.setKi(i);
-    }
-
-    public void setTargetPosition(double theta) {
-        this.targetPosition = Math.toRadians(theta);
+    /**
+     * Toggles the autonomous control of this subsystem.
+     *
+     * @param thetaDegrees The angle the arm will travel to.
+     */
+    public void setTargetPosition(double thetaDegrees) {
+        this.targetPosition = Math.toRadians(thetaDegrees);
+        this.pidController.reset();
     }
     @Override
     public void periodic() {
@@ -188,11 +186,16 @@ public class Arm implements Subsystem {
         this.linearSlides.periodic();
         this.manipulator.periodic();;
 
+        // Update motor velocity based on current system state.
+        if (active) {
+            calculateNewMotorPower();
+        }
+
+        // Output diagnostic data.
         telemetry.addLine("Arm Position: " + armMotor.getCurrentPosition());
         telemetry.addLine("Arm Angle: " + (getArmAngle() / Math.PI * 180));
         telemetry.addLine("Target Position: " + targetPosition);
-
-        // Update motor velocity based on current system state.
-        calculateNewMotorPower();
+        telemetry.addLine("Target Position (Deg): " + (targetPosition / Math.PI * 180));
+        telemetry.addLine("IsActive" + active);
     }
 }

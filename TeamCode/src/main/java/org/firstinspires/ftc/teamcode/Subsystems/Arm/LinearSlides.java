@@ -17,33 +17,25 @@ public class LinearSlides implements Subsystem {
     private final double ERROR_TOLLERANCE_METERS = 0.01;
 
     // Conversion Values
-    private final double TICKS_TO_EXTENSION_DISTANCE_METERS = 0.00008792307 ;
+    private final double TICKS_TO_EXTENSION_DISTANCE_METERS = 0.00008604909 ;
     private Telemetry telemetry;
 
     // Hardware Storage
     private DcMotorEx slideMotor;
 
-    // Supplier Storage
-    private Supplier<Double> getArmAngleSupplier;
-
     // Controller Storage
     private PIDController pidController;
-    private final double PROPORTIONAL_COEFFICIENT = 0;
+    private final double PROPORTIONAL_COEFFICIENT = 20;
     private final double INTEGRAL_COEFFICIENT = 0;
     private final double DERIVATIVE_COEFFICIENT = 0;
-    private final double GRAVITATIONAL_COMPENSATION_CONSTANT = 0; // TODO: TUNE!!!!!!!
 
     // General Storage
     private SlideExtension targetLength;
-    private double targetLengthEncoderTicks = 0;
     private double targetPosition = 0;
 
     // Flags
     private boolean eStopped = false;
-
-    public LinearSlides(Supplier<Double> getArmAngleSupplier) {
-        this.getArmAngleSupplier = getArmAngleSupplier;
-    }
+    private boolean active = false;
 
     /**
      * Sets up this subsystem so that it can function.
@@ -57,7 +49,8 @@ public class LinearSlides implements Subsystem {
     public void init(HardwareMap hardwareMap, Telemetry telemetry) {
 
         // Setup the PID Controller.
-        this.pidController = new PIDController(PROPORTIONAL_COEFFICIENT, INTEGRAL_COEFFICIENT, DERIVATIVE_COEFFICIENT);
+        this.pidController = new PIDController(PROPORTIONAL_COEFFICIENT, DERIVATIVE_COEFFICIENT, INTEGRAL_COEFFICIENT);
+        this.pidController.setErrorTolerance(0.00127);
         this.targetLength = SlideExtension.REST;
 
         // Setup hardware.
@@ -97,17 +90,10 @@ public class LinearSlides implements Subsystem {
     public void calculateNewMotorPower() {
 
         // Calculate feedback based on the distance towards the target position.
-        double calculatedFeedbackMotorPower = this.pidController.update(this.targetPosition, this.slideMotor.getCurrentPosition());
-
-        // Calculate feedforwards to compensate against gravity.
-        double armAngle = this.getArmAngleSupplier.get();
-        double feedforwards = GRAVITATIONAL_COMPENSATION_CONSTANT * Math.cos(armAngle);
-
-        // Combine the PID values and feedforwards.
-        double outputMotorPower = feedforwards + calculatedFeedbackMotorPower;
+        double motorPower = this.pidController.update(this.targetPosition, getExtensionDistance());
 
         // Set the motor power of the slide motor.
-        this.slideMotor.setPower(outputMotorPower);
+        this.slideMotor.setPower(motorPower);
     }
 
     /**
@@ -126,10 +112,23 @@ public class LinearSlides implements Subsystem {
      */
     public void setTargetLength(SlideExtension targetLength) {
         this.targetLength = targetLength;
-        this.targetLengthEncoderTicks = this.targetLength.getExtensionLengthMeters() / TICKS_TO_EXTENSION_DISTANCE_METERS;
+        this.targetPosition = targetLength.getExtensionLengthMeters();
     }
 
-    @Deprecated
+    /**
+     * Sets the target length of the linear slides, in inches.
+     *
+     * @param targetLengthInches The target length of the linear slides, in inches.
+     */
+    public void setTargetLength(double targetLengthInches) {
+        this.targetPosition = targetLengthInches / 39.37;
+    }
+
+    /**
+     * Sets the motor power of the slide motor allowing for human controlled slide movement.
+     *
+     * @param motorPower The power the slide motor will run at.
+     */
     public void setMotorPower(double motorPower) {
         this.slideMotor.setPower(motorPower);
     }
@@ -143,6 +142,14 @@ public class LinearSlides implements Subsystem {
         return Math.abs(this.slideMotor.getCurrentPosition()) - Math.abs(this.targetPosition) <= ERROR_TOLLERANCE_METERS;
     }
 
+    /**
+     * Toggles the autonomous control of this subsystem.
+     */
+    public void toggleActive() {
+        active = !active;
+    }
+
+
     @Override
     public void periodic() {
 
@@ -151,10 +158,13 @@ public class LinearSlides implements Subsystem {
             return;
         }
 
+        telemetry.addLine("Slide Position: " + slideMotor.getCurrentPosition());
         telemetry.addLine("Slide Position (m): " + getExtensionDistance());
         telemetry.addLine("Slide Position (in): " + getExtensionDistance() * 39.37);
 
         // Update motor velocity based on current system state.
-        //calculateNewMotorPower();
+        if (active) {
+            calculateNewMotorPower();
+        }
     }
 }

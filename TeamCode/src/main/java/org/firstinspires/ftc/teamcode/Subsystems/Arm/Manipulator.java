@@ -3,6 +3,8 @@ package org.firstinspires.ftc.teamcode.Subsystems.Arm;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.hardware.ServoController;
+import com.qualcomm.robotcore.hardware.ServoControllerEx;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.Subsystems.Subsystem;
@@ -10,7 +12,13 @@ import org.firstinspires.ftc.teamcode.Subsystems.Subsystem;
 public class Manipulator implements Subsystem {
 
     // Hardware Storage
-    private CRServo crServo;
+    private CRServo intakeServo;
+    private CRServo wristServo;
+    private ServoController wristServoController;
+
+    // Storage
+    private Telemetry telemetry;
+    private WristPosition targetPosition = WristPosition.START_POSITION;
 
     // Flags
     private boolean eStopped = false;
@@ -28,6 +36,9 @@ public class Manipulator implements Subsystem {
 
         // Setup Hardware.
         setupHardware(hardwareMap);
+
+        // Store the telemetry for future use.
+        this.telemetry = telemetry;
     }
 
     /**
@@ -36,41 +47,57 @@ public class Manipulator implements Subsystem {
      * @param hardwareMap The hardware map so that hardware cna be accessed.
      */
     private void setupHardware(HardwareMap hardwareMap) {
-        crServo = hardwareMap.get(CRServo.class, "intakeServo");
-        crServo.setDirection(DcMotorSimple.Direction.REVERSE);
+        intakeServo = hardwareMap.get(CRServo.class, "intakeServo");
+        intakeServo.setDirection(DcMotorSimple.Direction.REVERSE);
+
+        wristServo = hardwareMap.get(CRServo.class, "wristServo");
+        wristServoController = wristServo.getController();
+        wristServoController.pwmDisable(); // Enable position mode.
+        // wristServo.setDirection(DcMotorSimple.Direction.REVERSE); TODO: Check if needed
     }
 
     /**
      * Stops all hardware present within this subsystem.
      */
     public void eStop() {
-        this.crServo.setPower(0);
+        this.intakeServo.setPower(0);
         this.eStopped = true;
     }
 
     /**
+     * Sets the wrist's position.
+     *
+     * @param wristPosition The position the wrist will travel to.
+     */
+    public void setWristPosition(WristPosition wristPosition) {
+
+        // Store the target wrist position.
+        this.targetPosition = wristPosition;
+
+        // Set the target angle for the wrist.
+        this.wristServoController.setServoPosition(0, this.targetPosition.getWristAnglePosition());
+    }
+    /**
      * Adjusts the hardware such that it begins intaking samples.
      */
     public void intake() {
-        crServo.setPower(1);
-    }
-
-    public void setMotorPower(double motorPower) {
-        this.crServo.setPower(motorPower);
+        //intakeServo.setPower(1);
+        wristServo.setPower(0.5);
     }
 
     /**
      * Adjusts the hardware such that it begins outtaking samples.
      */
     public void outtake() {
-        crServo.setPower(-1);
+       // intakeServo.setPower(-1);
+        wristServo.setPower(-0.5);
     }
 
     /**
      * Stops all running hardware.
      */
     public void stopIntake() {
-        crServo.setPower(0);
+        intakeServo.setPower(0);
     }
 
     @Override
@@ -80,5 +107,9 @@ public class Manipulator implements Subsystem {
         if (this.eStopped) {
             return;
         }
+
+        // Output the wrist's current position.
+        telemetry.addLine("Wrist Position: " + wristServoController.getServoPosition(wristServo.getPortNumber()));
+        telemetry.addLine("Wrist Position: " + wristServoController.getServoPosition(wristServo.getPortNumber()));
     }
 }

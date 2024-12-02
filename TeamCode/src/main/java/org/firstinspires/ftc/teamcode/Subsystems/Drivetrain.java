@@ -11,17 +11,20 @@ import com.qualcomm.robotcore.hardware.IMU;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.teamcode.Subsystems.Odometry.CoordinateSystem;
 import org.firstinspires.ftc.teamcode.Utility.Constants.DrivetrainConstants;
 import org.firstinspires.ftc.teamcode.Utility.Geometry.Pose2d;
 
 public class Drivetrain implements Subsystem{
+
+    // Subsystems
+    private CoordinateSystem coordinateSystem;
 
     // Hardware
     private DcMotorEx frontRightDriveMotor;
     private DcMotorEx frontLeftDriveMotor;
     private DcMotorEx backRightDriveMotor;
     private DcMotorEx backLeftDriveMotor;
-    private IMU imu;
 
     // Settings
     private boolean fieldCentricEnabled = false;
@@ -38,7 +41,8 @@ public class Drivetrain implements Subsystem{
      * Creates a new drivetrain, with the default starting position.
      */
     public Drivetrain() {
-        robotPosition = new Pose2d();
+        this.robotPosition = new Pose2d();
+        this.coordinateSystem = new CoordinateSystem();
     }
 
     /**
@@ -47,7 +51,8 @@ public class Drivetrain implements Subsystem{
      * @param startingLocation The robot's position on the field, as a Pose2d.
      */
     public Drivetrain(Pose2d startingLocation) {
-        robotPosition = startingLocation;
+        this.robotPosition = startingLocation;
+        this.coordinateSystem = new CoordinateSystem(startingLocation);
     }
 
     /**
@@ -65,6 +70,9 @@ public class Drivetrain implements Subsystem{
         setupHardware(hardwareMap);
         this.telemetry = telemetry;
 
+        // Enable the coordinate system
+        coordinateSystem.init(hardwareMap, telemetry);
+        
         // Set the robot's position.
         robotPosition = new Pose2d();
     }
@@ -107,16 +115,6 @@ public class Drivetrain implements Subsystem{
         frontLeftDriveMotor.setDirection(DcMotorSimple.Direction.REVERSE);
         backRightDriveMotor.setDirection(DcMotorSimple.Direction.FORWARD);
         backLeftDriveMotor.setDirection(DcMotorSimple.Direction.REVERSE);
-
-        // Create the IMU parameters that tell the IMU what direction its facing and allow us to use the
-        // robot's rotation for various calculations.
-        IMU.Parameters imuSettings = new IMU.Parameters(new RevHubOrientationOnRobot(
-                RevHubOrientationOnRobot.LogoFacingDirection.FORWARD,
-                RevHubOrientationOnRobot.UsbFacingDirection.RIGHT));
-
-        // Initialize the IMU
-        imu = hardwareMap.get(IMU.class, "imu");
-        imu.initialize(imuSettings);
     }
 
     /**
@@ -145,7 +143,7 @@ public class Drivetrain implements Subsystem{
         if (fieldCentricEnabled ) {
 
             // Store the robot's rotation.
-            double robotYawRadians = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
+            double robotYawRadians = coordinateSystem.getRobotHeadingRadians();
 
             // Rotate the velocity value
             xMotion = (xInput * Math.cos(-robotYawRadians)) - (zInput * Math.sin(-robotYawRadians));
@@ -267,6 +265,24 @@ public class Drivetrain implements Subsystem{
     }
 
     /**
+     * Returns this robot's coordinate system.
+     *
+     * @return This robot's coordinate system.
+     */
+    public Subsystem getCoordinateSystem() {
+        return this.coordinateSystem;
+    }
+
+    /**
+     * Returns this robot's position as a pose2d.
+     *
+     * @return This robot's position as a pose2d.
+     */
+    public Pose2d getRobotPosition() {
+        return this.coordinateSystem.getRobotPosition();
+    }
+
+    /**
      * Returns whether or not the robot is driving in a field centric manner.
      *
      * @return Whether or not the robot is driving in a field centric manner.
@@ -286,5 +302,6 @@ public class Drivetrain implements Subsystem{
 
     @Override
     public void periodic() {
+        coordinateSystem.periodic();
     }
 }

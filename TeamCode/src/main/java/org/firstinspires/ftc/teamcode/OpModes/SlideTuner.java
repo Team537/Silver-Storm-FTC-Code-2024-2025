@@ -5,7 +5,6 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.Gamepad;
 
 import org.firstinspires.ftc.teamcode.Subsystems.Arm.Arm;
-import org.firstinspires.ftc.teamcode.Subsystems.Arm.ArmPositions;
 import org.firstinspires.ftc.teamcode.Subsystems.Arm.LinearSlides;
 import org.firstinspires.ftc.teamcode.Subsystems.RobotHardware;
 
@@ -71,7 +70,7 @@ public class SlideTuner extends LinearOpMode {
             }
 
             if (currentGamepad.guide && !previousGamepad.guide) {
-                arm.toggleActive();
+                arm.toggleAutonomousControl(true);
             }
 
             if (currentGamepad.left_bumper && !previousGamepad.left_bumper) {

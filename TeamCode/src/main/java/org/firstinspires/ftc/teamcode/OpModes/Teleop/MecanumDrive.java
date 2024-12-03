@@ -4,7 +4,6 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.Gamepad;
 
-import org.firstinspires.ftc.teamcode.Subsystems.Arm.ArmPositions;
 import org.firstinspires.ftc.teamcode.Subsystems.RobotHardware;
 
 @TeleOp(name = "Mecanum Drive", group = "2024-2025")
@@ -72,11 +71,11 @@ public class MecanumDrive extends LinearOpMode {
 
             // Manipulator Control
             if (currentGamepad.x && !previousGamepad.x) {
-                robotHardware.robotArm.getManipulator().intake();
+                robotHardware.robotArm.getManipulator().openClaw();
             }
 
             if (currentGamepad.a && !previousGamepad.a) {
-                robotHardware.robotArm.getManipulator().outtake();
+                robotHardware.robotArm.getManipulator().closeClaw();
             }
 
             if (currentGamepad.b && !previousGamepad.b) {

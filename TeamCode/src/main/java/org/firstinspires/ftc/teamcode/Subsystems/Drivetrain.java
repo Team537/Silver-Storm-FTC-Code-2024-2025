@@ -48,6 +48,8 @@ public class Drivetrain implements Subsystem{
     // Settings
     private boolean fieldCentricEnabled = false;
     private boolean velocityDriveEnabled = false;
+    private double rotationalErrorToleranceRadians = 0.0174533;
+    private double positionalErrorToleranceMeters = 0.01016;
 
     // Flags
     private boolean autonomousControlActive = false;
@@ -93,13 +95,13 @@ public class Drivetrain implements Subsystem{
 
         // Create PID Controller Objects.
         this.rotationalPIDController = new RotationalPIDController(ROTATIONAL_PROPORTIONAL_COEFFICIENT, ROTATIONAL_INTEGRAL_COEFFICIENT, ROTATIONAL_DERIVATIVE_COEFFICIENT);
-        this.rotationalPIDController.setErrorTolerance(0.0174533);
+        this.rotationalPIDController.setErrorTolerance(rotationalErrorToleranceRadians);
 
         this.xPIDController = new PIDController(POSITIONAL_PROPORTIONAL_COEFFICIENT, POSITIONAL_INTEGRAL_COEFFICIENT, POSITIONAL_DERIVATIVE_COEFFICIENT);
-        this.xPIDController.setErrorTolerance(0.01016);
+        this.xPIDController.setErrorTolerance(positionalErrorToleranceMeters);
 
         this.zPIDController = new PIDController(POSITIONAL_PROPORTIONAL_COEFFICIENT, POSITIONAL_INTEGRAL_COEFFICIENT, POSITIONAL_DERIVATIVE_COEFFICIENT);
-        this.zPIDController.setErrorTolerance(0.01016);
+        this.zPIDController.setErrorTolerance(positionalErrorToleranceMeters);
 
         // Enable the coordinate system
         coordinateSystem.init(hardwareMap, telemetry);
@@ -393,6 +395,27 @@ public class Drivetrain implements Subsystem{
 
         // Set the robot's motor powers.
         setMotorPower(frontRightSpeed, backRightSpeed, frontLeftSpeed, backLeftSpeed);
+    }
+
+    /**
+     * Returns whether or not the robot is at the target position.
+     *
+     * @return Whether or not the robot is at the target position.
+     */
+    public boolean atTargetPosition() {
+
+        // Check if the robot is within the error tolerance for its target position. If it isn't return false,
+        // as we aren't yet at the target position.
+        if (Math.abs(coordinateSystem.getRobotXCoordinateMeters() - this.targetPosition.getX()) > positionalErrorToleranceMeters) {
+            return false;
+        }
+        if (Math.abs(coordinateSystem.getRobotZCoordinateMeters() - this.targetPosition.getZ()) > positionalErrorToleranceMeters) {
+            return false;
+        }
+
+        // Return whether or not the robot is within the rotational tolerance. This i the only thing left
+        // determining if the robot is at the target position.
+        return !(Math.abs(coordinateSystem.clampAngle(coordinateSystem.getRobotHeadingRadians(false) - this.targetPosition.getYawInRadians())) < rotationalErrorToleranceRadians);
     }
 
     @Override

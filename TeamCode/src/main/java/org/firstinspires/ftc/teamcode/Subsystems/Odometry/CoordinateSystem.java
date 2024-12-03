@@ -171,7 +171,7 @@ public class CoordinateSystem implements Subsystem {
      * @param angleRadians The angle that needs to be clamped, in radians.
      * @return The clamped angle.
      */
-    private double clampAngle(double angleRadians) {
+    public synchronized double clampAngle(double angleRadians) {
         double outputAngleRadians = angleRadians;
         while (outputAngleRadians <= -Math.PI) {
             outputAngleRadians += 2 * Math.PI;

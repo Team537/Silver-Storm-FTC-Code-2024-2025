@@ -163,6 +163,15 @@ public class ComputerVision implements Subsystem {
         return camerGainControl.getGain();
     }
 
+    /**
+     * Returns this Computer Vision's sample pipeline.
+     *
+     * @return This Computer Vision's sample pipeline.
+     */
+    public GenericSamplePipeline getGenericSamplePipeline() {
+        return this.neutralSamplePipeline;
+    }
+
     @Override
     public void periodic() {
 

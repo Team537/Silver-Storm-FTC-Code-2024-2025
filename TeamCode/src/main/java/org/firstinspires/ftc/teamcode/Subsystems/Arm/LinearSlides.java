@@ -2,14 +2,11 @@ package org.firstinspires.ftc.teamcode.Subsystems.Arm;
 
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.Subsystems.Subsystem;
 import org.firstinspires.ftc.teamcode.Utility.Controllers.PIDController;
-
-import java.util.function.Supplier;
 
 public class LinearSlides implements Subsystem {
 
@@ -35,7 +32,7 @@ public class LinearSlides implements Subsystem {
 
     // Flags
     private boolean eStopped = false;
-    private boolean active = false;
+    private boolean autonomousControlActive = false;
 
     /**
      * Sets up this subsystem so that it can function.
@@ -120,8 +117,17 @@ public class LinearSlides implements Subsystem {
      *
      * @param targetLengthInches The target length of the linear slides, in inches.
      */
-    public void setTargetLength(double targetLengthInches) {
+    public void setTargetLengthInches(double targetLengthInches) {
         this.targetPosition = targetLengthInches / 39.37;
+    }
+
+    /**
+     * Sets the target length of the linear slides, in meters.
+     *
+     * @param targetLengthMeters The target length of the linear slides, in meters.
+     */
+    public void setTargetLengthMeters(double targetLengthMeters) {
+        this.targetPosition = targetLengthMeters;
     }
 
     /**
@@ -144,11 +150,12 @@ public class LinearSlides implements Subsystem {
 
     /**
      * Toggles the autonomous control of this subsystem.
+     *
+     * @param active Whether or not the robot can be controlled autonomously.
      */
-    public void toggleActive() {
-        active = !active;
+    public void toggleAutonomousControl(boolean active) {
+        this.autonomousControlActive = active;
     }
-
 
     @Override
     public void periodic() {
@@ -163,7 +170,7 @@ public class LinearSlides implements Subsystem {
         telemetry.addLine("Slide Position (in): " + getExtensionDistance() * 39.37);
 
         // Update motor velocity based on current system state.
-        if (active) {
+        if (autonomousControlActive) {
             calculateNewMotorPower();
         }
     }

@@ -2,9 +2,10 @@ package org.firstinspires.ftc.teamcode.Subsystems.Vision;
 
 import android.graphics.Canvas;
 
-import androidx.annotation.Nullable;
-
 import org.firstinspires.ftc.robotcore.external.Telemetry;
+import org.firstinspires.ftc.teamcode.Utility.Geometry.Vector;
+import org.firstinspires.ftc.teamcode.Utility.Time.ElapsedTime;
+import org.firstinspires.ftc.teamcode.Utility.Time.TimeUnit;
 import org.opencv.calib3d.Calib3d;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
@@ -20,27 +21,54 @@ import org.openftc.easyopencv.OpenCvPipeline;
 
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.List;
 
-public class GenericSamplePipeline extends OpenCvPipeline {
+public class SampleDetectionPipeline extends OpenCvPipeline {
 
     // Settings
-    private final Scalar LOW_COLOR_RANGE = new Scalar(10,175,170);
-    private final Scalar HIGH_COLOR_RANGE = new Scalar(30,255,255);
+    private double cameraDistanceFromGroundMeters = 0.1095375;
 
     // Storage
+
     private Telemetry telemetry;
+    private ElapsedTime visionRuntime;
+
+    // Sample Detection Data Storage
+    private SampleType currentSampleType = SampleType.NEUTRAL;
+    private Scalar lowColorRange = new Scalar(10,175,170);
+    private Scalar highColorRange = new Scalar(30,255,255);
+
+    private volatile List<Sample> detectedObjects = new ArrayList<>(); // Volatile to prevent weird scenarios with vision data updates.
+
+    // Pipeline Settings Storage
     private Size imageSize;
-    private Mat intrinsicCameraMatrix;
-    private Mat distortionCoefficients;
-    private Mat translationMatrix;
-    private Mat rotationMatrix;
 
-    private double cameraDistanceFromGroundMeters = 0.0254; //TODO: Fill out field with actual value. Note: measured from robot origin to ground.
+    // General Processing Storage
+    private Mat outputFrame = new Mat();
 
+    // Distortion Removal Storage
     private Mat mapX = new Mat();
     private Mat mapY = new Mat();
     private Mat newIntrinsicCameraMatrix = new Mat();
     private Rect regionOfInterest = new Rect();
+    private Mat remappedImage = new Mat();
+
+    // Masking Matrix Storage
+    private Mat yellowMask;
+    private Mat hsvImage = new Mat();
+    private Mat thresholdImage = new Mat();
+    private Mat kernel;
+
+    // Find Contours Storage
+    private Mat edges = new Mat();
+    private Mat hierarchy = new Mat();
+
+    // Object 3D Position Estimation Storage
+    private Mat intrinsicCameraMatrix = new Mat();
+    private Mat distortionCoefficients = new Mat();
+    private Mat translationMatrix = new Mat();
+    private Mat rotationMatrix = new Mat();
+    private Mat objectWorldCoordinates = new Mat();
 
     // Flags
     private boolean calculatedUndistortedImageValues = false;
@@ -52,32 +80,32 @@ public class GenericSamplePipeline extends OpenCvPipeline {
      * @param imageWidth The width of the processed image.
      * @param imageHeight The height of the processed image.
      */
-    public GenericSamplePipeline(int imageWidth, int imageHeight, Telemetry telemetry) {
+    public SampleDetectionPipeline(int imageWidth, int imageHeight, Telemetry telemetry) {
         this.imageSize = new Size(imageWidth, imageHeight);
         this.telemetry = telemetry;
+        this.visionRuntime = new ElapsedTime();
     }
 
     @Override
     public Mat processFrame(Mat inputFrame) {
 
         // Clone the input frame to preserve the original.
-        Mat outputFrame = inputFrame.clone();
+        this.outputFrame = inputFrame.clone();
 
         // If a valid camera matrix and distortion coefficient matrix were provided, remove distortion from the image.
         if (intrinsicCameraMatrix != null && distortionCoefficients != null) {
-            outputFrame = undistortImage(outputFrame);
+            undistortImage(outputFrame);
         }
 
         // Create a mask to isolate yellow regions in the image.
-        Mat yellowMask = createYellowMask(outputFrame);
-        if (yellowMask == null) {
-            return outputFrame; // If no mask is created, return the original input.
+        createYellowMask(this.outputFrame);
+        if (this.yellowMask == null) {
+            return this.outputFrame; // If no mask is created, return the original input.
         }
 
         // Get contours and bounding boxes from the masked image.
-        ArrayList<MatOfPoint> contours = findContours(yellowMask);
+        ArrayList<MatOfPoint> contours = findContours();
         Rect[] boundingBoxes = extractBoundingBoxes(contours);
-        yellowMask.release();
 
         // If at least one bounding box is found, process and return the updated frame.
         if (boundingBoxes.length > 0) {
@@ -103,9 +131,8 @@ public class GenericSamplePipeline extends OpenCvPipeline {
      * and distortion coefficients, and then the image will be cropped to remove black borders.
      *
      * @param inputFrame The original distorted image frame that needs to be undistorted.
-     * @return A new Mat object representing the undistorted and cropped image.
      */
-    private Mat undistortImage(Mat inputFrame) {
+    private void undistortImage(Mat inputFrame) {
 
         // Check if the undistortion maps and optimal camera matrix have already been computed.
         if (!calculatedUndistortedImageValues) {
@@ -115,12 +142,11 @@ public class GenericSamplePipeline extends OpenCvPipeline {
 
         // Apply the remapping to the input frame using the precomputed mapX and mapY. This undistorts the image
         // by shifting pixels to their corrected positions based on the camera matrix and distortion coefficients.
-        Mat remappedImage = new Mat();
-        Imgproc.remap(inputFrame, remappedImage, mapX, mapY, Imgproc.INTER_LINEAR);
+        Imgproc.remap(inputFrame, this.remappedImage, this.mapX, this.mapY, Imgproc.INTER_LINEAR);
 
         // Crop the undistorted image to the valid region of interest (ROI), removing any black borders
-        // around the edges, and return the final undistorted, cropped image.
-        return new Mat(remappedImage, regionOfInterest);
+        // around the edges.
+        this.outputFrame = new Mat(remappedImage, regionOfInterest);
     }
 
     /**
@@ -132,64 +158,60 @@ public class GenericSamplePipeline extends OpenCvPipeline {
 
         // Initialize undistortion and rectification transformation maps (mapX and mapY) using the original
         // camera matrix and distortion coefficients. These maps are used to remap the pixels of the input frame.
-        Calib3d.initUndistortRectifyMap(intrinsicCameraMatrix, distortionCoefficients, new Mat(), newIntrinsicCameraMatrix,
-                imageSize, CvType.CV_32FC1, mapX, mapY);
+        Calib3d.initUndistortRectifyMap(this.intrinsicCameraMatrix, this.distortionCoefficients, new Mat(), this.newIntrinsicCameraMatrix,
+                this.imageSize, CvType.CV_32FC1, this.mapX, this.mapY);
 
         // Calculate and return the optimal new camera matrix, adjusting the field of view while minimizing distortion.
         // The regionOfInterest (ROI) defines the valid part of the undistorted image, eliminating any black borders
         // introduced by the remapping process. This new camera matrix will be used for cropping the image.
-        return Calib3d.getOptimalNewCameraMatrix(intrinsicCameraMatrix, distortionCoefficients,
-                imageSize, 1, imageSize, regionOfInterest);
+        return Calib3d.getOptimalNewCameraMatrix(this.intrinsicCameraMatrix, this.distortionCoefficients,
+                this.imageSize, 1, this.imageSize, this.regionOfInterest);
     }
 
     /**
-     * Creates a binary mask that isolates yellow regions in the input frame.
+     * Creates a binary mask that isolates yellow regions in the input frame and saves the result to the YellowMask variable.
      *
      * @param inputFrame The original input image.
-     * @return A binary mask where yellow areas are white, and the rest is black.
      */
-    @Nullable
-    private Mat createYellowMask(Mat inputFrame) {
+    private void createYellowMask(Mat inputFrame) {
+
+        // Clear the old yellow mask.
+        this.yellowMask = null;
 
         // Convert the input frame from RGB to HSV color space.
-        Mat hsvImage = new Mat();
-        Imgproc.cvtColor(inputFrame, hsvImage, Imgproc.COLOR_RGB2HSV);
+        Imgproc.cvtColor(inputFrame, this.hsvImage, Imgproc.COLOR_RGB2HSV);
 
         // If conversion failed, return null indicating no mask could be created.
-        if (hsvImage.empty()) {
-            return null;
+        if (this.hsvImage.empty()) {
+            return;
         }
 
         // Create a threshold image that isolates yellow regions.
-        Mat thresholdImage = new Mat();
-        Core.inRange(hsvImage, LOW_COLOR_RANGE, HIGH_COLOR_RANGE, thresholdImage);
-        hsvImage.release();
+        Core.inRange(this.hsvImage, this.lowColorRange, this.highColorRange, this.thresholdImage);
 
         // Apply morphological operations to clean up noise and fill gaps.
-        Mat kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(5, 5));
-        Imgproc.morphologyEx(thresholdImage, thresholdImage, Imgproc.MORPH_OPEN, kernel); // Remove noise.
-        Imgproc.morphologyEx(thresholdImage, thresholdImage, Imgproc.MORPH_CLOSE, kernel); // Fill gaps.
-        Imgproc.morphologyEx(thresholdImage, thresholdImage, Imgproc.MORPH_OPEN, kernel); // Remove noise.
+        this.kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(5, 5));
+        Imgproc.morphologyEx(this.thresholdImage, this.thresholdImage, Imgproc.MORPH_OPEN, kernel); // Remove noise.
+        Imgproc.morphologyEx(this.thresholdImage, this.thresholdImage, Imgproc.MORPH_CLOSE, kernel); // Fill gaps.
+        Imgproc.morphologyEx(this.thresholdImage, this.thresholdImage, Imgproc.MORPH_OPEN, kernel); // Remove noise.
 
-        return thresholdImage; // Return the processed mask image.
+        // Update the yellow mask.
+        this.yellowMask = thresholdImage.clone();
     }
 
     /**
      * Finds contours in the binary mask image.
      *
-     * @param mask The mask where contours will be detected.
      * @return A list of contours found in the mask.
      */
-    private ArrayList<MatOfPoint> findContours(Mat mask) {
+    private ArrayList<MatOfPoint> findContours() {
 
         // Detect edges in the mask using the Canny edge detector.
-        Mat edges = new Mat();
-        Imgproc.Canny(mask, edges, 400, 500);
+        Imgproc.Canny(this.yellowMask, this.edges, 400, 500);
 
         // Find contours from the detected edges.
         ArrayList<MatOfPoint> contours = new ArrayList<>();
-        Mat hierarchy = new Mat();
-        Imgproc.findContours(edges, contours, hierarchy, Imgproc.RETR_TREE, Imgproc.CHAIN_APPROX_SIMPLE);
+        Imgproc.findContours(this.edges, contours, this.hierarchy, Imgproc.RETR_TREE, Imgproc.CHAIN_APPROX_SIMPLE);
 
         return contours; // Return the list of detected contours.
     }
@@ -223,11 +245,8 @@ public class GenericSamplePipeline extends OpenCvPipeline {
      */
     private void drawBoundingBoxes(Mat outputFrame, Rect[] boundingBoxes) {
 
-        // Keep track of the largest bounding box so that it's estimation can be displayed on the telemetry.
-        double greatestArea = 0;
-        String largestBoundingBoxRoundedXPositionMeters = "";
-        String largestBoundingBoxRoundedYPositionMeters = "";
-        String largestBoundingBoxRoundedZPositionMeters = "";
+        // Clear the list of detected objects.
+        this.detectedObjects.clear();
 
         // Loop through each bounding box and draw it on the output frame.
         for (Rect box : boundingBoxes) {
@@ -247,13 +266,24 @@ public class GenericSamplePipeline extends OpenCvPipeline {
             if (newIntrinsicCameraMatrix != null && rotationMatrix != null && translationMatrix != null) {
 
                 // Estimate the detected object's 3D position.
-                Mat object3DPosition = estimate3DPosition(box);
+               estimate3DPosition(box);
+
+                // Get object's position along each axis.
+                double xPosition = this.objectWorldCoordinates.get(0, 0)[0];
+                double yPosition = this.objectWorldCoordinates.get(0, 1)[0];
+                double zPosition = this.objectWorldCoordinates.get(0, 2)[0];
+
+                // Create a new sample object and add it to the list of detected objects.
+                double[] positionAsList = new double[] {xPosition, yPosition, zPosition};
+                Vector positionRelativeToRobot = new Vector(positionAsList);
+                Sample detectedObject = new Sample(positionRelativeToRobot, this.currentSampleType, box, visionRuntime.getElapsedTime(TimeUnit.SECOND));
+                detectedObjects.add(detectedObject);
 
                 // Round all estimated positional values so that the image can be more clearly read and distinguished.
                 DecimalFormat decimalFormat = new DecimalFormat("#.####");
-                String roundedXPositionMeters = decimalFormat.format(object3DPosition.get(0, 0)[0]);
-                String roundedYPositionMeters =  decimalFormat.format(object3DPosition.get(0, 1)[0]);
-                String roundedZPositionMeters =  decimalFormat.format(object3DPosition.get(0, 2)[0]);
+                String roundedXPositionMeters = decimalFormat.format(xPosition);
+                String roundedYPositionMeters =  decimalFormat.format(yPosition);
+                String roundedZPositionMeters =  decimalFormat.format(zPosition);
 
                 // Create a message that can be displayed on the image.
                 String positionText = "(" + roundedXPositionMeters + "," + roundedYPositionMeters + "," +
@@ -265,20 +295,8 @@ public class GenericSamplePipeline extends OpenCvPipeline {
                         0.8, new Scalar(0, 0, 0), 3); // Outline
                 Imgproc.putText(outputFrame, positionText, positionLabelPosition, Imgproc.FONT_HERSHEY_DUPLEX,
                         0.8, new Scalar(255, 221, 51), 1); // Text
-
-                if (box.area() > greatestArea) {
-                    greatestArea = box.area();
-                    largestBoundingBoxRoundedXPositionMeters = roundedXPositionMeters;
-                    largestBoundingBoxRoundedYPositionMeters = roundedYPositionMeters;
-                    largestBoundingBoxRoundedZPositionMeters = roundedZPositionMeters;
-                }
             }
         }
-
-        // Display the most prominent estimated object's position.
-        telemetry.addData("Estimated X", largestBoundingBoxRoundedXPositionMeters);
-        telemetry.addData("Estimated Y", largestBoundingBoxRoundedYPositionMeters);
-        telemetry.addData("Estimated Z", largestBoundingBoxRoundedZPositionMeters);
     }
 
     /**
@@ -288,7 +306,7 @@ public class GenericSamplePipeline extends OpenCvPipeline {
      * @return A new 1x3 matrix containing an estimate of the 3D position of the detected object with
      *         values in the following order: X, Y, Z
      */
-    private Mat estimate3DPosition(Rect detectedObject) {
+    private void estimate3DPosition(Rect detectedObject) {
 
         /*
          Since the pixel coordinates are from the top left corner of the bounding box, adjust them
@@ -315,14 +333,9 @@ public class GenericSamplePipeline extends OpenCvPipeline {
         double objectDepthMeters = estimateObjectDepth(adjustedYPixelCoordinate);
         double xPositionMeters = estimateObjectX(objectDepthMeters, adjustedXPixelCoordinate);
 
-        // TODO: Convert camera centric coordinates to robot centric coordinates.
-
         // Represent the estimated position as a Mat object.
-        Mat objectWorldCoordinates = new Mat(1,3, CvType.CV_32FC1);
-        objectWorldCoordinates.put(0, 0, xPositionMeters, -cameraDistanceFromGroundMeters, objectDepthMeters);
-
-        // Return the object's estimated 3D position as a matrix object.
-        return objectWorldCoordinates; // 3x1 matrix containing [X, Y, Z]
+        this.objectWorldCoordinates = new Mat(1,3, CvType.CV_32FC1);
+        this.objectWorldCoordinates.put(0, 0, xPositionMeters, -cameraDistanceFromGroundMeters, objectDepthMeters);
     }
 
     /**
@@ -354,6 +367,21 @@ public class GenericSamplePipeline extends OpenCvPipeline {
 
         // Calculate and return the object's X position.
         return  (((objectXPixelCoordinate - principlePointX) * objectDepthMeters) / focalLengthX);
+    }
+
+    /**
+     * Sets this pipeline's current sample, which determines which color samples are detected. THis
+     *
+     * @param sampleType The type of the same that will be detected.
+     */
+    public void setCurrentSampleType(SampleType sampleType) {
+
+        // Set this pipeline's current sample to the given sample type.
+        this.currentSampleType = sampleType;
+
+        // Set the color thresholds for pipeline based on the current sample.
+        this.lowColorRange = this.currentSampleType.getLowHSVThreshold();
+        this.highColorRange = this.currentSampleType.getHighHSVThreshold();
     }
 
     /**
@@ -405,6 +433,15 @@ public class GenericSamplePipeline extends OpenCvPipeline {
      */
     public void captureFrame() {
         shouldCaptureFrame = true;
+    }
+
+    /**
+     * Returns a list of all of the detected objects.
+     *
+     * @return A list of all of the detected objects.
+     */
+    public List<Sample> getDetectedObjects() {
+        return this.detectedObjects;
     }
 
     @Override

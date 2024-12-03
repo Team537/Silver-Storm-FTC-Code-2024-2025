@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit;
 public class ComputerVision implements Subsystem {
 
     private OpenCvWebcam camera;
-    private GenericSamplePipeline neutralSamplePipeline;
+    private SampleDetectionPipeline neutralSamplePipeline;
     private FileEx cameraSettings;
 
     // Settings
@@ -35,12 +35,13 @@ public class ComputerVision implements Subsystem {
         cameraSettings = new FileEx(CAMERA_SETTINGS_FILE_NAME);
 
         // Setup the neutralSamplePipeline
-        neutralSamplePipeline = new GenericSamplePipeline(LogitechBrio100Constants.STREAM_WIDTH_PIXELS,
+        neutralSamplePipeline = new SampleDetectionPipeline(LogitechBrio100Constants.STREAM_WIDTH_PIXELS,
                 LogitechBrio100Constants.STREAM_HEIGHT_PIXELS, telemetry);
         neutralSamplePipeline.setDistortionCoefficients(LogitechBrio100Constants.DISTORTION_COEFFICIENTS);
         neutralSamplePipeline.setIntrinsicCameraMatrix(LogitechBrio100Constants.CAMERA_MATRIX);
         neutralSamplePipeline.setExtrinsicCameraMatrix(LogitechBrio100Constants.CAMERA_ROTATION_MATRIX, LogitechBrio100Constants.CAMERA_TRANSLATION_MATRIX);
-
+        neutralSamplePipeline.setCurrentSampleType(SampleType.NEUTRAL);
+        
         // Setup the camera
         setupCamera(hardwareMap);
     }

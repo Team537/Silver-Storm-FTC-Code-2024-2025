@@ -5,7 +5,7 @@ import org.opencv.core.Scalar;
 public enum SampleType {
     RED ("RED", new Scalar(0, 0, 0), new Scalar(0, 0, 0)), // TODO: Tune
     BLUE ("BLUE", new Scalar(0, 0, 0), new Scalar(0, 0, 0)), // TODO: Tune
-    NEUTRAL ("NEUTRAL", new Scalar(10,175,170), new Scalar(30,255,255));
+    NEUTRAL ("NEUTRAL", new Scalar(5,188,68), new Scalar(17,255,152));
 
     private final String sampleName;
     private final Scalar lowHSVThreshold;

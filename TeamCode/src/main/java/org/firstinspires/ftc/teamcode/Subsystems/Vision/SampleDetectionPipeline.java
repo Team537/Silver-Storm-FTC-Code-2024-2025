@@ -26,7 +26,7 @@ import java.util.List;
 public class SampleDetectionPipeline extends OpenCvPipeline {
 
     // Settings
-    private double cameraDistanceFromGroundMeters = 0.0254; //TODO: Fill out field with actual value. Note: measured from robot origin to ground.
+    private double cameraDistanceFromGroundMeters = 0.1095375;
 
     // Storage
 
@@ -49,26 +49,26 @@ public class SampleDetectionPipeline extends OpenCvPipeline {
     // Distortion Removal Storage
     private Mat mapX = new Mat();
     private Mat mapY = new Mat();
-    private Mat newIntrinsicCameraMatrix;
-    private Rect regionOfInterest;
-    private Mat remappedImage;
+    private Mat newIntrinsicCameraMatrix = new Mat();
+    private Rect regionOfInterest = new Rect();
+    private Mat remappedImage = new Mat();
 
     // Masking Matrix Storage
     private Mat yellowMask;
-    private Mat hsvImage;
-    private Mat thresholdImage;
+    private Mat hsvImage = new Mat();
+    private Mat thresholdImage = new Mat();
     private Mat kernel;
 
     // Find Contours Storage
-    private Mat edges;
-    private Mat hierarchy;
+    private Mat edges = new Mat();
+    private Mat hierarchy = new Mat();
 
     // Object 3D Position Estimation Storage
-    private Mat intrinsicCameraMatrix;
-    private Mat distortionCoefficients;
-    private Mat translationMatrix;
-    private Mat rotationMatrix;
-    private Mat objectWorldCoordinates;
+    private Mat intrinsicCameraMatrix = new Mat();
+    private Mat distortionCoefficients = new Mat();
+    private Mat translationMatrix = new Mat();
+    private Mat rotationMatrix = new Mat();
+    private Mat objectWorldCoordinates = new Mat();
 
     // Flags
     private boolean calculatedUndistortedImageValues = false;

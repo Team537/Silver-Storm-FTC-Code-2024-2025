@@ -2,12 +2,14 @@ package org.firstinspires.ftc.teamcode.Subsystems.Vision;
 
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
+import org.firstinspires.ftc.robotcore.external.Function;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.robotcore.external.hardware.camera.controls.ExposureControl;
 import org.firstinspires.ftc.robotcore.external.hardware.camera.controls.GainControl;
 import org.firstinspires.ftc.teamcode.Subsystems.Subsystem;
 import org.firstinspires.ftc.teamcode.Utility.Constants.VisionConstants.LogitechBrio100Constants;
+import org.firstinspires.ftc.teamcode.Utility.Geometry.Pose2d;
 import org.firstinspires.ftc.teamcode.Utility.Storage.FileEx;
 import org.openftc.easyopencv.OpenCvCameraFactory;
 import org.openftc.easyopencv.OpenCvCameraRotation;
@@ -17,6 +19,7 @@ import java.util.concurrent.TimeUnit;
 
 public class ComputerVision implements Subsystem {
 
+    private Function<Pose2d, Pose2d> robotToFieldSpaceConversion;
     private OpenCvWebcam camera;
     private SampleDetectionPipeline neutralSamplePipeline;
     private FileEx cameraSettings;
@@ -28,6 +31,10 @@ public class ComputerVision implements Subsystem {
     private final long DEFAULT_EXPOSURE_TIME_MILLISECONDS = 5;
     private final int DEFAULT_GAIN = 50;
 
+    public ComputerVision(Function<Pose2d, Pose2d> robotToFieldSpaceConversion) {
+
+    }
+
     @Override
     public void init(HardwareMap hardwareMap, Telemetry telemetry) {
 
@@ -36,7 +43,7 @@ public class ComputerVision implements Subsystem {
 
         // Setup the neutralSamplePipeline
         neutralSamplePipeline = new SampleDetectionPipeline(LogitechBrio100Constants.STREAM_WIDTH_PIXELS,
-                LogitechBrio100Constants.STREAM_HEIGHT_PIXELS, telemetry);
+                LogitechBrio100Constants.STREAM_HEIGHT_PIXELS, telemetry, robotToFieldSpaceConversion);
         neutralSamplePipeline.setDistortionCoefficients(LogitechBrio100Constants.DISTORTION_COEFFICIENTS);
         neutralSamplePipeline.setIntrinsicCameraMatrix(LogitechBrio100Constants.CAMERA_MATRIX);
         neutralSamplePipeline.setExtrinsicCameraMatrix(LogitechBrio100Constants.CAMERA_ROTATION_MATRIX, LogitechBrio100Constants.CAMERA_TRANSLATION_MATRIX);

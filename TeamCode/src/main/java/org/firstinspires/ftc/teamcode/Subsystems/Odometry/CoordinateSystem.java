@@ -21,14 +21,14 @@ public class CoordinateSystem implements Subsystem {
     private IMU imu;
 
     // Storage Coordinate Data
-    private Pose2d robotPosition;
-    private double robotXCoordinate = 0;
-    private double robotZCoordinate = 0;
-    private double robotHeading = 0;
+    private volatile Pose2d robotPosition;
+    private volatile double robotXCoordinate = 0;
+    private volatile double robotZCoordinate = 0;
+    private volatile double robotHeading = 0;
 
     // Rotational Offsets
-    private double orientationOffset = 0;
-    private double driveRotationalOffset = 0;
+    private volatile double orientationOffset = 0;
+    private volatile double driveRotationalOffset = 0;
 
     // General Storage
     private Telemetry telemetry;
@@ -104,6 +104,23 @@ public class CoordinateSystem implements Subsystem {
      */
     public void resetIMU() {
         this.driveRotationalOffset = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
+    }
+
+    /**
+     * Converts the given robot centric position to field space.
+     *
+     * @param objectPosition A position, relative to the robot's origin.
+     * @return The given position, converted to field space.
+     */
+    public synchronized Pose2d robotSpaceToFieldSpace(Pose2d objectPosition) {
+
+        double rotatedX = objectPosition.getX() * Math.cos(this.robotHeading) - objectPosition.getZ() * Math.sin(this.robotHeading);
+        double rotatedZ = objectPosition.getX() * Math.sin(this.robotHeading) + objectPosition.getZ() * Math.cos(this.robotHeading);
+
+        double objectFieldX = this.robotXCoordinate + rotatedX;
+        double objectFieldZ = this.robotZCoordinate + rotatedZ;
+
+        return new Pose2d(objectFieldX, objectFieldZ);
     }
 
     /**

@@ -107,7 +107,7 @@ public class Pose2d {
      * @param targetPosition The position you wish to find the distance to.
      * @return The distance to the provided point, as a double.
      */
-    static double getAbsolutePositionalDistanceTo(Pose2d originPosition, Pose2d targetPosition) {
+    public static double getAbsolutePositionalDistanceTo(Pose2d originPosition, Pose2d targetPosition) {
 
         // Calculate the distance between each point on each axis.
         double xDistanceMeters = originPosition.getX() - targetPosition.getX();

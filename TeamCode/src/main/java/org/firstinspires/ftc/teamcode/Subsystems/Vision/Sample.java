@@ -1,26 +1,34 @@
 package org.firstinspires.ftc.teamcode.Subsystems.Vision;
 
+import org.firstinspires.ftc.teamcode.Utility.Geometry.Pose2d;
 import org.firstinspires.ftc.teamcode.Utility.Geometry.Vector;
 import org.opencv.core.Rect;
 
 public class Sample {
-    private Vector robotRelativePosition;
+    private Pose2d fieldPosition;
     private SampleType sampleType;
-    private Rect boundingBox;
     private double detectionTimeSeconds;
 
     /**
      * Create a new sample object with the given information.
      *
-     * @param robotRelativePosition The 3D position of the sample.
+     * @param fieldPosition The 3D position of the sample.
      * @param sampleType The type of the sample.
-     * @param boundingBox The bounding box of the object on the screen.
      */
-    public Sample(Vector robotRelativePosition, SampleType sampleType, Rect boundingBox, double detectionTimeSeconds) {
-        this.robotRelativePosition = robotRelativePosition;
+    public Sample(Pose2d fieldPosition, SampleType sampleType, double detectionTimeSeconds) {
+        this.fieldPosition = fieldPosition;
         this.sampleType = sampleType;
-        this.boundingBox = boundingBox;
         this.detectionTimeSeconds = detectionTimeSeconds;
+    }
+
+    /**
+     * If a new detection of this sample is found, update this sample's data.
+     *
+     * @param updatedSample The new detection of this sample.
+     */
+    public void update(Sample updatedSample) {
+        this.fieldPosition = updatedSample.getFieldPosition();
+        this.detectionTimeSeconds = updatedSample.getDetectionTimeSeconds();
     }
 
     /**
@@ -28,8 +36,8 @@ public class Sample {
      *
      * @return This Sample's robotRelativePosition.
      */
-    public Vector getRobotRelativePosition() {
-        return robotRelativePosition;
+    public Pose2d getFieldPosition() {
+        return fieldPosition;
     }
 
     /**
@@ -39,15 +47,6 @@ public class Sample {
      */
     public SampleType getSampleType() {
         return sampleType;
-    }
-
-    /**
-     * Return this Sample's boundingBox.
-     *
-     * @return This Sample's boundingBox.
-     */
-    public Rect getBoundingBox() {
-        return boundingBox;
     }
 
     /**

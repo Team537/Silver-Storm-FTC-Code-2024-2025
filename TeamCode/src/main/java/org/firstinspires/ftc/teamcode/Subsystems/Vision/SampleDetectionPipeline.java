@@ -2,7 +2,9 @@ package org.firstinspires.ftc.teamcode.Subsystems.Vision;
 
 import android.graphics.Canvas;
 
+import org.firstinspires.ftc.robotcore.external.Function;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
+import org.firstinspires.ftc.teamcode.Utility.Geometry.Pose2d;
 import org.firstinspires.ftc.teamcode.Utility.Geometry.Vector;
 import org.firstinspires.ftc.teamcode.Utility.Time.ElapsedTime;
 import org.firstinspires.ftc.teamcode.Utility.Time.TimeUnit;
@@ -27,11 +29,15 @@ public class SampleDetectionPipeline extends OpenCvPipeline {
 
     // Settings
     private double cameraDistanceFromGroundMeters = 0.1095375;
+    private double cameraZDistanceFromOriginMeters = 0.0508;
+    private double cameraXDistanceFromOriginMeters = 0.2159;
+
+    private double sameObjectDistanceToleranceMeters = 0.01524; // TODO: FINE TUNE
 
     // Storage
-
     private Telemetry telemetry;
     private ElapsedTime visionRuntime;
+    private Function<Pose2d, Pose2d> robotToFieldSpaceConversion;
 
     // Sample Detection Data Storage
     private SampleType currentSampleType = SampleType.NEUTRAL;
@@ -79,11 +85,14 @@ public class SampleDetectionPipeline extends OpenCvPipeline {
      *
      * @param imageWidth The width of the processed image.
      * @param imageHeight The height of the processed image.
+     * @param telemetry The robot's telemetry, for data visualization.
+     * @param robotToFieldSpaceConversion A method to convert vision data to robot data.
      */
-    public SampleDetectionPipeline(int imageWidth, int imageHeight, Telemetry telemetry) {
+    public SampleDetectionPipeline(int imageWidth, int imageHeight, Telemetry telemetry, Function<Pose2d, Pose2d> robotToFieldSpaceConversion) {
         this.imageSize = new Size(imageWidth, imageHeight);
         this.telemetry = telemetry;
         this.visionRuntime = new ElapsedTime();
+        this.robotToFieldSpaceConversion = robotToFieldSpaceConversion;
     }
 
     @Override
@@ -245,9 +254,6 @@ public class SampleDetectionPipeline extends OpenCvPipeline {
      */
     private void drawBoundingBoxes(Mat outputFrame, Rect[] boundingBoxes) {
 
-        // Clear the list of detected objects.
-        this.detectedObjects.clear();
-
         // Loop through each bounding box and draw it on the output frame.
         for (Rect box : boundingBoxes) {
 
@@ -269,15 +275,17 @@ public class SampleDetectionPipeline extends OpenCvPipeline {
                estimate3DPosition(box);
 
                 // Get object's position along each axis.
-                double xPosition = this.objectWorldCoordinates.get(0, 0)[0];
+                double xPosition = -this.objectWorldCoordinates.get(0, 0)[0] - cameraZDistanceFromOriginMeters;
                 double yPosition = this.objectWorldCoordinates.get(0, 1)[0];
-                double zPosition = this.objectWorldCoordinates.get(0, 2)[0];
+                double zPosition = this.objectWorldCoordinates.get(0, 2)[0] + cameraXDistanceFromOriginMeters;
+
+                // Create a Pose2d of the object and convert it to robot space.
+                Pose2d objectPoseRobotSpace = new Pose2d(zPosition, xPosition);
+                Pose2d objectPoseWorldSpace = robotToFieldSpaceConversion.apply(objectPoseRobotSpace);
 
                 // Create a new sample object and add it to the list of detected objects.
-                double[] positionAsList = new double[] {xPosition, yPosition, zPosition};
-                Vector positionRelativeToRobot = new Vector(positionAsList);
-                Sample detectedObject = new Sample(positionRelativeToRobot, this.currentSampleType, box, visionRuntime.getElapsedTime(TimeUnit.SECOND));
-                detectedObjects.add(detectedObject);
+                Sample detectedObject = new Sample(objectPoseWorldSpace, this.currentSampleType, visionRuntime.getElapsedTime(TimeUnit.SECOND));
+                addToDetectedSamples(detectedObject);
 
                 // Round all estimated positional values so that the image can be more clearly read and distinguished.
                 DecimalFormat decimalFormat = new DecimalFormat("#.####");
@@ -297,14 +305,42 @@ public class SampleDetectionPipeline extends OpenCvPipeline {
                         0.8, new Scalar(255, 221, 51), 1); // Text
             }
         }
+
+        telemetry.addLine("#Detected Objects");
+    }
+
+    /**
+     * Checks if the newly detected sample has been seen before. If it has, update the previous detection. Otherwise,
+     * add it io the list of detected objects.
+     *
+     * @param newSampleDetection The newly detected sample.
+     */
+    private void addToDetectedSamples(Sample newSampleDetection) {
+        for (Sample sample : detectedObjects) {
+
+            // If the sample's aren't the same type, skip to the next detection.
+            if (newSampleDetection.getSampleType() != sample.getSampleType()) {
+                continue;
+            }
+
+            // Check if the two samples are within the set distance tolerance identifying them as the same.
+            if (!(Pose2d.getAbsolutePositionalDistanceTo(sample.getFieldPosition(), newSampleDetection.getFieldPosition()) <= sameObjectDistanceToleranceMeters)) {
+                continue;
+            }
+
+            // The samples are the same, so update ethem.
+            sample.update(newSampleDetection);
+            return;
+        }
+
+        // The sample detection is new, so add it to the list of detected objects.
+        this.detectedObjects.add(newSampleDetection);
     }
 
     /**
      * Estimates the given detected object's position in 3D space, assuming that the object is on the floor.
      *
      * @param detectedObject The bounding box around the detected object, as a Rect.
-     * @return A new 1x3 matrix containing an estimate of the 3D position of the detected object with
-     *         values in the following order: X, Y, Z
      */
     private void estimate3DPosition(Rect detectedObject) {
 
@@ -426,6 +462,7 @@ public class SampleDetectionPipeline extends OpenCvPipeline {
         // The values required to remove distortion must be recalculated.
         this.calculatedUndistortedImageValues = false;
     }
+
 
     /**
      * Saves two images of what the camera sees to the driver hub. One of the input frame (unprocessed image),

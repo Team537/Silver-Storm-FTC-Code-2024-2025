@@ -297,7 +297,7 @@ public class Drivetrain implements Subsystem{
      *
      * @return This robot's coordinate system.
      */
-    public Subsystem getCoordinateSystem() {
+    public CoordinateSystem getCoordinateSystem() {
         return this.coordinateSystem;
     }
 

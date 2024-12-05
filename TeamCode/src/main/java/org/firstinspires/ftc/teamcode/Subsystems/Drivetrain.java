@@ -97,10 +97,10 @@ public class Drivetrain implements Subsystem{
         this.rotationalPIDController = new RotationalPIDController(ROTATIONAL_PROPORTIONAL_COEFFICIENT, ROTATIONAL_INTEGRAL_COEFFICIENT, ROTATIONAL_DERIVATIVE_COEFFICIENT);
         this.rotationalPIDController.setErrorTolerance(rotationalErrorToleranceRadians);
 
-        this.xPIDController = new PIDController(POSITIONAL_PROPORTIONAL_COEFFICIENT, POSITIONAL_INTEGRAL_COEFFICIENT, POSITIONAL_DERIVATIVE_COEFFICIENT);
+        this.xPIDController = new PIDController(POSITIONAL_PROPORTIONAL_COEFFICIENT, POSITIONAL_DERIVATIVE_COEFFICIENT, POSITIONAL_INTEGRAL_COEFFICIENT);
         this.xPIDController.setErrorTolerance(positionalErrorToleranceMeters);
 
-        this.zPIDController = new PIDController(POSITIONAL_PROPORTIONAL_COEFFICIENT, POSITIONAL_INTEGRAL_COEFFICIENT, POSITIONAL_DERIVATIVE_COEFFICIENT);
+        this.zPIDController = new PIDController(POSITIONAL_PROPORTIONAL_COEFFICIENT, POSITIONAL_DERIVATIVE_COEFFICIENT, POSITIONAL_INTEGRAL_COEFFICIENT);
         this.zPIDController.setErrorTolerance(positionalErrorToleranceMeters);
 
         // Enable the coordinate system
@@ -369,7 +369,7 @@ public class Drivetrain implements Subsystem{
         // Calculate the necessary motor powers to drive the robot.
         double rotationalMotion = -this.rotationalPIDController.update(this.targetPosition.getYawInRadians(), robotYawRadians);
         double xMotion = this.xPIDController.update(this.targetPosition.getX(), coordinateSystem.getRobotXCoordinateMeters());
-        double zMotion = this.zPIDController.update(this.targetPosition.getZ(), coordinateSystem.getRobotZCoordinateMeters());
+        double zMotion = -this.zPIDController.update(this.targetPosition.getZ(), coordinateSystem.getRobotZCoordinateMeters());
 
         // Rotate the velocity value
         double rotatedXMotion = (xMotion * Math.cos(-robotYawRadians)) - (zMotion * Math.sin(-robotYawRadians));

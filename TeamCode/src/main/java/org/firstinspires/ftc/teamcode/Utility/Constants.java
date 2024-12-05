@@ -57,7 +57,7 @@ public final class Constants {
 
             private static double[] cameraMatrixValues = new double[]{
                     876.7542742312495, 0, 328.9249436771823,  // First row of the camera matrix
-                    0, 878.198963669983, 210.28863286011176,   // Second row of the camera matrix
+                        0, 878.198963669983, 210.28863286011176,   // Second row of the camera matrix
                     0, 0, 1                                    // Third row of the camera matrix (homogeneous coordinate)
             };
 

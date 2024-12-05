@@ -5,18 +5,30 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.Gamepad;
 
 import org.firstinspires.ftc.teamcode.Subsystems.RobotHardware;
+import org.firstinspires.ftc.teamcode.Utility.Geometry.Pose2d;
+import org.firstinspires.ftc.teamcode.Utility.Geometry.Rotation2d;
+import org.firstinspires.ftc.teamcode.Utility.Time.ElapsedTime;
+import org.firstinspires.ftc.teamcode.Utility.Time.TimeUnit;
 
-@TeleOp(name = "Mecanum Drive", group = "2024-2025")
-public class MecanumDrive extends LinearOpMode {
+@TeleOp
+public class AutoTuner extends LinearOpMode {
 
     RobotHardware robotHardware;
 
     @Override
     public void runOpMode()  {
 
+        // Set the starting position.
+        Pose2d startPose = new Pose2d(1.614148, 0.413513, new Rotation2d(-Math.PI, 0));
+        Pose2d scorePose = new Pose2d(1.1928, 0.255398, new Rotation2d(-Math.PI, 0));
+        Pose2d searchPoseOne = new Pose2d(1.202903, 0.739140, new Rotation2d(-Math.toRadians(140), 0));
+        Pose2d searchPoseTwo = new Pose2d(1.214120, -0.600075, new Rotation2d(-Math.toRadians(118), 0));
+        Pose2d red2Scoring = new Pose2d(1.518128, -1.492113, new Rotation2d(-Math.toRadians(45), 0));
+
         // Setup the robot's hardware.
         robotHardware = new RobotHardware();
-        robotHardware.init(this.hardwareMap, this.telemetry);
+        robotHardware.init(this.hardwareMap, this.telemetry, startPose);
+        ElapsedTime elapsedTime = new ElapsedTime();
 
         // Store multiple gamepads to server as a sort of debounce.
         Gamepad previousGamepad = new Gamepad();
@@ -25,6 +37,7 @@ public class MecanumDrive extends LinearOpMode {
         // Wait for the OpMode to be started.
         waitForStart();
         double wristPos = 0;
+
         // While the opmode is active, allow the robot to be controlled by the driver and display
         // useful diagnostic information.
         while (opModeIsActive()) {
@@ -38,48 +51,59 @@ public class MecanumDrive extends LinearOpMode {
 
             // Arm position and movement.
             if (currentGamepad.dpad_down && !previousGamepad.dpad_down) {
-                robotHardware.robotArm.setTargetArmPositionRadians(robotHardware.robotArm.getStartingAngleRadians());
-                robotHardware.robotArm.getManipulator().setWristPosition(.70); // TODO: RETUNE
-                robotHardware.robotArm.toggleAutonomousControl(true);
+                wristPos -= 0.05;
             }
             if (currentGamepad.dpad_up && !previousGamepad.dpad_up) {
-                robotHardware.robotArm.setTargetPosition(80);
-                robotHardware.robotArm.getManipulator().setWristPosition(0);
-                robotHardware.robotArm.toggleAutonomousControl(true);
+                wristPos += 0.05;
             }
+
             if (currentGamepad.dpad_right && !previousGamepad.dpad_right) {
-                robotHardware.robotArm.setTargetPosition(26);
-                robotHardware.robotArm.getManipulator().setWristPosition(.36);
-                robotHardware.robotArm.toggleAutonomousControl(true);
+                robotHardware.robotArm.getManipulator().setWristPosition(wristPos);
             }
 
             // Toggle whether or not the robot will drive using velocity.
             if (currentGamepad.guide && !previousGamepad.guide) {
-                robotHardware.drivetrain.toggleVelocityDrive();
+                robotHardware.drivetrain.toggleAutonomousControl(true);
+                robotHardware.robotArm.toggleAutonomousControl(true);
+                robotHardware.robotArm.getLinearSlides().toggleAutonomousControl(true);
             }
 
             // Toggle whether or not the robot will drive in a field centric manner.
             if (currentGamepad.back && !previousGamepad.back) {
-                robotHardware.drivetrain.toggleFieldCentricDrive();
+                robotHardware.drivetrain.setTargetPosition(startPose);
+                robotHardware.robotArm.setTargetArmPositionRadians(robotHardware.robotArm.getStartingAngleRadians());
+                robotHardware.robotArm.getLinearSlides().setTargetLengthInches(0);
+                robotHardware.robotArm.getManipulator().closeClaw();
             }
 
             // Reset the robot's IMU.
             if (currentGamepad.start && !previousGamepad.start) {
-                robotHardware.drivetrain.resetIMU();
+                robotHardware.drivetrain.setTargetPosition(scorePose);
+                robotHardware.robotArm.getManipulator().closeClaw();
+                robotHardware.robotArm.getManipulator().setWristPosition(0.7);
             }
+
 
             // Manipulator Control
             if (currentGamepad.x && !previousGamepad.x) {
-                robotHardware.robotArm.getManipulator().openClaw();
+                robotHardware.robotArm.setTargetArmPositionRadians(robotHardware.robotArm.getStartingAngleRadians());
+                robotHardware.robotArm.getLinearSlides().setTargetLengthInches(0);
             }
 
             if (currentGamepad.a && !previousGamepad.a) {
-                robotHardware.robotArm.getManipulator().closeClaw();
+                robotHardware.robotArm.setTargetPosition(35);
+                robotHardware.robotArm.getLinearSlides().setTargetLengthInches(10);
+                robotHardware.robotArm.getManipulator().setWristPosition(0.36);
+            }
+
+            if (currentGamepad.y && !previousGamepad.y) {
+                robotHardware.drivetrain.setTargetPosition(searchPoseOne);
             }
 
             if (currentGamepad.b && !previousGamepad.b) {
                 robotHardware.robotArm.getManipulator().setWristPosition(0.2);
             }
+
 
             // Drive the robot based on user inputs.
             double xInput = currentGamepad.left_stick_x;
@@ -87,14 +111,14 @@ public class MecanumDrive extends LinearOpMode {
             double rotationalInput = currentGamepad.right_stick_x;
 
             // Drive the robot.
-            robotHardware.drivetrain.driveRobotWithControllerInputs(xInput,
-                    -zInput, rotationalInput);
 
             // Call the periodic function for all subsystems.
             robotHardware.periodic();
 
             // Update Telemetry.
             telemetry.addLine("WristPosition: " + wristPos);
+            telemetry.addLine("LoopTIme: " + elapsedTime.getElapsedTime(TimeUnit.SECOND));
+            elapsedTime.reset();
             telemetry.update();
         }
     }

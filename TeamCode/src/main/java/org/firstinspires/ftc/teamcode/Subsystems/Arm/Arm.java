@@ -13,6 +13,7 @@ public class Arm implements Subsystem {
     // Settings
     private double ticksToRadians = 0.00308354937;
     private double starting_angle_radians = -1.09956;
+    private double errorToleranceRadians = 0.0174533;
 
     // Subsystem Storage
     private LinearSlides linearSlides;
@@ -36,7 +37,7 @@ public class Arm implements Subsystem {
 
     // FLags
     private boolean eStopped = false;
-    private boolean active = false;
+    private boolean autonomousControlActive = false;
 
     /**
      * Sets up this subsystem so that it can function.
@@ -58,7 +59,7 @@ public class Arm implements Subsystem {
 
         // Setup the PID controller
         this.pidController = new PIDController(PROPORTIONAL_COEFFICIENT, DERIVATIVE_COEFFICIENT, INTEGRAL_COEFFICIENT);
-        this.pidController.setErrorTolerance(0.0174533);
+        this.pidController.setErrorTolerance(errorToleranceRadians);
 
         // Setup the hardware.
         setupHardware(hardwareMap);
@@ -92,6 +93,26 @@ public class Arm implements Subsystem {
     }
 
     /**
+     * Toggles the autonomous control of this subsystem.
+     *
+     * @param thetaDegrees The angle the arm will travel to, in degrees.
+     */
+    public void setTargetPosition(double thetaDegrees) {
+        this.targetPosition = Math.toRadians(thetaDegrees);
+        this.pidController.reset();
+    }
+
+    /**
+     * Toggles the autonomous control of this subsystem.
+     *
+     * @param thetaRadians The angle the arm will travel to, in radians.
+     */
+    public void setTargetArmPositionRadians(double thetaRadians) {
+        this.targetPosition = thetaRadians;
+        this.pidController.reset();
+    }
+
+    /**
      * Recalculate the motor's power based on the arm's distance form its target position.
      */
     public void calculateNewMotorPower() {
@@ -120,6 +141,24 @@ public class Arm implements Subsystem {
         this.armMotor.setPower(0);
         this.linearSlides.eStop();
         this.manipulator.eStop();
+    }
+
+    /**
+     * Returns whether or not the arm is at the specified target position.
+     *
+     * @return Whether or not the arm is at the specified target position.
+     */
+    public boolean atTargetPosition() {
+        return (Math.abs(this.getArmAngle() - this.targetPosition) < errorToleranceRadians);
+    }
+
+    /**
+     * Returns the arm's starting angle, in radians.
+     *
+     * @return The arm's starting angle, in radians.
+     */
+    public double getStartingAngleRadians() {
+        return this.starting_angle_radians;
     }
 
     /**
@@ -160,20 +199,13 @@ public class Arm implements Subsystem {
 
     /**
      * Toggles the autonomous control of this subsystem.
+     *
+     * @param active Whether or not the robot can be controlled autonomously.
      */
-    public void toggleActive() {
-        active = !active;
+    public void toggleAutonomousControl(boolean active) {
+        this.autonomousControlActive = active;
     }
 
-    /**
-     * Toggles the autonomous control of this subsystem.
-     *
-     * @param thetaDegrees The angle the arm will travel to.
-     */
-    public void setTargetPosition(double thetaDegrees) {
-        this.targetPosition = Math.toRadians(thetaDegrees);
-        this.pidController.reset();
-    }
     @Override
     public void periodic() {
 
@@ -187,7 +219,7 @@ public class Arm implements Subsystem {
         this.manipulator.periodic();;
 
         // Update motor velocity based on current system state.
-        if (active) {
+        if (autonomousControlActive) {
             calculateNewMotorPower();
         }
 
@@ -196,6 +228,6 @@ public class Arm implements Subsystem {
         telemetry.addLine("Arm Angle: " + (getArmAngle() / Math.PI * 180));
         telemetry.addLine("Target Position: " + targetPosition);
         telemetry.addLine("Target Position (Deg): " + (targetPosition / Math.PI * 180));
-        telemetry.addLine("IsActive" + active);
+        telemetry.addLine("IsActive" + autonomousControlActive);
     }
 }

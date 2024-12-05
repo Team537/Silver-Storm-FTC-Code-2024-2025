@@ -18,6 +18,7 @@ public class LinearSlidePIDTuner extends LinearOpMode {
 
     @Override
     public void runOpMode() throws InterruptedException {
+
         // Setup the robot's hardware.
         robotHardware = new RobotHardware();
         robotHardware.init(this.hardwareMap, this.telemetry);
@@ -55,10 +56,7 @@ public class LinearSlidePIDTuner extends LinearOpMode {
 
             // Toggle whether or not the robot will drive using velocity.
             if (currentGamepad.start && !previousGamepad.start) {
-                linearSlides.setTargetLength(5.5);
-                //linearSlides.setP(p);
-                //linearSlides.setI(i);
-                //linearSlides.setD(d);
+                linearSlides.setTargetLengthInches(5.5);
             }
 
             if (currentGamepad.right_bumper && !previousGamepad.right_bumper) {
@@ -66,7 +64,7 @@ public class LinearSlidePIDTuner extends LinearOpMode {
             }
 
             if (currentGamepad.back && !previousGamepad.back) {
-                linearSlides.setTargetLength(0);
+                linearSlides.setTargetLengthInches(0);
             }
 
             // Proportional term.
@@ -89,8 +87,8 @@ public class LinearSlidePIDTuner extends LinearOpMode {
 
             // Toggle whether or not the robot will drive using velocity.
             if (currentGamepad.guide && !previousGamepad.guide) {
-                linearSlides.toggleActive();
-                robotHardware.robotArm.toggleActive();
+                linearSlides.toggleAutonomousControl(true);
+                robotHardware.robotArm.toggleAutonomousControl(true);
             }
 
             // Integral Term
@@ -105,12 +103,12 @@ public class LinearSlidePIDTuner extends LinearOpMode {
 
             // Gauge how well the arm cna reach different targets.
             if (currentGamepad.a && !previousGamepad.a) {
-                linearSlides.setTargetLength(9);
+                linearSlides.setTargetLengthInches(9);
             }
 
             // Gauge how well the arm cna reach different targets.
             if (currentGamepad.y && !previousGamepad.y) {
-                linearSlides.setTargetLength(0);
+                linearSlides.setTargetLengthInches(0);
             }
             
             if (gamepad1.a) {

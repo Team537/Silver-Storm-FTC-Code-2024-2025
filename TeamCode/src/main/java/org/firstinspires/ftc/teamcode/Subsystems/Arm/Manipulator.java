@@ -1,10 +1,8 @@
 package org.firstinspires.ftc.teamcode.Subsystems.Arm;
 
 import com.qualcomm.robotcore.hardware.CRServo;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.ServoController;
-import com.qualcomm.robotcore.hardware.ServoControllerEx;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.Subsystems.Subsystem;
@@ -18,7 +16,6 @@ public class Manipulator implements Subsystem {
 
     // Storage
     private Telemetry telemetry;
-    private WristPosition targetPosition = WristPosition.START_POSITION;
 
     // Flags
     private boolean eStopped = false;
@@ -48,7 +45,6 @@ public class Manipulator implements Subsystem {
      */
     private void setupHardware(HardwareMap hardwareMap) {
         intakeServo = hardwareMap.get(CRServo.class, "intakeServo");
-
         wristServo = hardwareMap.get(CRServo.class, "wristServo");
         servoController = wristServo.getController();
     }
@@ -62,43 +58,35 @@ public class Manipulator implements Subsystem {
     }
 
     /**
-     * Sets the wrist's position.
+     * Sets the claw servo to the given position.
      *
-     * @param wristPosition The position the wrist will travel to.
+     * @param clawPosition The position that the claw will travel to.
      */
-    public void setWristPosition(WristPosition wristPosition) {
-
-        // Store the target wrist position.
-        this.targetPosition = wristPosition;
-
-        // Set the target angle for the wrist.
-        this.servoController.setServoPosition(3, this.targetPosition.getWristAnglePosition());
+    public void setClawPosition(double clawPosition) {
+        servoController.setServoPosition(4, clawPosition);
     }
 
-    public void setWristPosition(double theta) {
-        double position = 0.5 + ((theta / 90) * 0.5);
-        servoController.setServoPosition(3, position);
+    /**
+     * Sets the wrist servo to the given position.
+     *
+     * @param wristPosition The position that the wrist will travel to.
+     */
+    public void setWristPosition(double wristPosition) {
+        servoController.setServoPosition(3, wristPosition);
     }
 
     /**
      * Adjusts the hardware such that it begins intaking samples.
      */
-    public void intake() {
+    public void openClaw() {
         servoController.setServoPosition(4, 1);
     }
 
     /**
      * Adjusts the hardware such that it begins outtaking samples.
      */
-    public void outtake() {
+    public void closeClaw() {
         servoController.setServoPosition(4, 0);
-    }
-
-    /**
-     * Stops all running hardware.
-     */
-    public void stopIntake() {
-        intakeServo.setPower(0);
     }
 
     @Override

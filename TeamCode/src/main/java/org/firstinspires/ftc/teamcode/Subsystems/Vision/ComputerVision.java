@@ -15,6 +15,7 @@ import org.openftc.easyopencv.OpenCvCameraFactory;
 import org.openftc.easyopencv.OpenCvCameraRotation;
 import org.openftc.easyopencv.OpenCvWebcam;
 
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class ComputerVision implements Subsystem {
@@ -32,7 +33,7 @@ public class ComputerVision implements Subsystem {
     private final int DEFAULT_GAIN = 50;
 
     public ComputerVision(Function<Pose2d, Pose2d> robotToFieldSpaceConversion) {
-
+        this.robotToFieldSpaceConversion = robotToFieldSpaceConversion;
     }
 
     @Override
@@ -92,6 +93,15 @@ public class ComputerVision implements Subsystem {
         camera.setPipeline(neutralSamplePipeline);
         camera.startStreaming(LogitechBrio100Constants.STREAM_WIDTH_PIXELS,
                 LogitechBrio100Constants.STREAM_HEIGHT_PIXELS, OpenCvCameraRotation.UPRIGHT);
+    }
+
+    /**
+     * Returns a list of detected objects. This includes objects not currently visible.
+     *
+     * @return A list of detected objects.
+     */
+    public List<Sample> getDetectedObjects() {
+        return this.neutralSamplePipeline.getDetectedObjects();
     }
 
     /**

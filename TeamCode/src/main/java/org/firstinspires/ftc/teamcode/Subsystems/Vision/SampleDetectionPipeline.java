@@ -29,10 +29,10 @@ public class SampleDetectionPipeline extends OpenCvPipeline {
 
     // Settings
     private double cameraDistanceFromGroundMeters = 0.1095375;
-    private double cameraZDistanceFromOriginMeters = 0.1381125;
+    private double cameraZDistanceFromOriginMeters = 0.0508;
     private double cameraXDistanceFromOriginMeters = 0.2159;
 
-    private double sameObjectDistanceToleranceMeters = 0.0127; // TODO: FINE TUNE
+    private double sameObjectDistanceToleranceMeters = 0.01524; // TODO: FINE TUNE
 
     // Storage
     private Telemetry telemetry;
@@ -275,12 +275,12 @@ public class SampleDetectionPipeline extends OpenCvPipeline {
                estimate3DPosition(box);
 
                 // Get object's position along each axis.
-                double xPosition = this.objectWorldCoordinates.get(0, 0)[0] + cameraXDistanceFromOriginMeters;
+                double xPosition = -this.objectWorldCoordinates.get(0, 0)[0] - cameraZDistanceFromOriginMeters;
                 double yPosition = this.objectWorldCoordinates.get(0, 1)[0];
-                double zPosition = this.objectWorldCoordinates.get(0, 2)[0] + cameraZDistanceFromOriginMeters;
+                double zPosition = this.objectWorldCoordinates.get(0, 2)[0] + cameraXDistanceFromOriginMeters;
 
                 // Create a Pose2d of the object and convert it to robot space.
-                Pose2d objectPoseRobotSpace = new Pose2d(xPosition, zPosition);
+                Pose2d objectPoseRobotSpace = new Pose2d(zPosition, xPosition);
                 Pose2d objectPoseWorldSpace = robotToFieldSpaceConversion.apply(objectPoseRobotSpace);
 
                 // Create a new sample object and add it to the list of detected objects.

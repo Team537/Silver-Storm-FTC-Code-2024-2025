@@ -2,12 +2,17 @@ package org.firstinspires.ftc.teamcode.Utility;
 
 import android.os.Environment;
 
+import org.firstinspires.ftc.teamcode.Utility.Geometry.Pose2d;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfDouble;
 
 public final class Constants {
 
+    public static final class AutoConstants {
+        public static final Pose2d GRAB_OFFSET_ROBOT_CENTRIC = new Pose2d(-0.1905, -0.0127);
+        public static final Pose2d GRAB_OFFSET_ROBOT_CENTRIC_ROTATED = new Pose2d(-0.0127, -0.1905);
+    }
     public static final class CommandConstants {
         public static final String COMMAND_SEPARATION_CHARACTER = "/";
     }

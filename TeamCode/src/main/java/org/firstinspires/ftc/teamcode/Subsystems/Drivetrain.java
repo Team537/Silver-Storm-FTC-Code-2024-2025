@@ -313,6 +313,15 @@ public class Drivetrain implements Subsystem{
     }
 
     /**
+     * Return this drivetrain's target position as a Pose2d.
+     *
+     * @return This drivetrain's target position as a Pose2d.
+     */
+    public Pose2d getTargetPosition() {
+        return targetPosition;
+    }
+
+    /**
      * Returns whether or not the robot is driving in a field centric manner.
      *
      * @return Whether or not the robot is driving in a field centric manner.

@@ -48,7 +48,7 @@ public class ComputerVision implements Subsystem {
         neutralSamplePipeline.setDistortionCoefficients(LogitechBrio100Constants.DISTORTION_COEFFICIENTS);
         neutralSamplePipeline.setIntrinsicCameraMatrix(LogitechBrio100Constants.CAMERA_MATRIX);
         neutralSamplePipeline.setExtrinsicCameraMatrix(LogitechBrio100Constants.CAMERA_ROTATION_MATRIX, LogitechBrio100Constants.CAMERA_TRANSLATION_MATRIX);
-        neutralSamplePipeline.setCurrentSampleType(SampleType.NEUTRAL);
+        neutralSamplePipeline.setCurrentSampleType(SampleType.RED);
         
         // Setup the camera
         setupCamera(hardwareMap);
@@ -129,6 +129,15 @@ public class ComputerVision implements Subsystem {
     }
 
     /**
+     * Set whether or not this pipeline will record new vision data.
+     *
+     * @param pauseCapture Whether or not this pipeline will record new vision data.
+     */
+    public void setPauseCapture(boolean pauseCapture) {
+        this.neutralSamplePipeline.setPauseCapture(pauseCapture);
+    }
+
+    /**
      * Sets the exposure of the active camera to the given value.
      *
      * @param exposureTimeMilliseconds The exposure time, in milliseconds.
@@ -186,8 +195,17 @@ public class ComputerVision implements Subsystem {
      *
      * @return This Computer Vision's sample pipeline.
      */
-    public GenericSamplePipeline getGenericSamplePipeline() {
+    public SampleDetectionPipeline getSampleDetectionPipeline() {
         return this.neutralSamplePipeline;
+    }
+
+    /**
+     * Returns the runtime of this pipeline.
+     *
+     * @return The runtime of this pipeline.
+     */
+    public double getVisionTimeSeconds() {
+        return this.neutralSamplePipeline.getVisionTimeSeconds();
     }
 
     @Override

@@ -28,7 +28,7 @@ import java.util.List;
 public class SampleDetectionPipeline extends OpenCvPipeline {
 
     // Settings
-    private double cameraDistanceFromGroundMeters = 0.1095375;
+    private double cameraDistanceFromGroundMeters = 0.111125;
     private double cameraZDistanceFromOriginMeters = 0.0508;
     private double cameraXDistanceFromOriginMeters = 0.2159;
 
@@ -38,6 +38,10 @@ public class SampleDetectionPipeline extends OpenCvPipeline {
     private Telemetry telemetry;
     private ElapsedTime visionRuntime;
     private Function<Pose2d, Pose2d> robotToFieldSpaceConversion;
+
+    // Detection Accuracy Settings
+    private double lowerDistanceThresholdMeters = 0.254;
+    private double upperDistanceThreshold = 2.4384;
 
     // Sample Detection Data Storage
     private SampleType currentSampleType = SampleType.NEUTRAL;
@@ -79,6 +83,7 @@ public class SampleDetectionPipeline extends OpenCvPipeline {
     // Flags
     private boolean calculatedUndistortedImageValues = false;
     private volatile boolean shouldCaptureFrame = false;
+    private volatile boolean pauseCapture = false;
 
     /**
      * Creates a new GenericSamplePipeline that will process images of the given dimensions.
@@ -97,6 +102,11 @@ public class SampleDetectionPipeline extends OpenCvPipeline {
 
     @Override
     public Mat processFrame(Mat inputFrame) {
+
+        // If told to pause capturing, return the input frame.
+        if (this.pauseCapture) {
+            return inputFrame;
+        }
 
         // Clone the input frame to preserve the original.
         this.outputFrame = inputFrame.clone();
@@ -279,6 +289,14 @@ public class SampleDetectionPipeline extends OpenCvPipeline {
                 double yPosition = this.objectWorldCoordinates.get(0, 1)[0];
                 double zPosition = this.objectWorldCoordinates.get(0, 2)[0] + cameraXDistanceFromOriginMeters;
 
+                // Determine whether or not the object data should be stored.
+                if (zPosition < (lowerDistanceThresholdMeters + cameraZDistanceFromOriginMeters)) {
+                    continue;
+                }
+                if (zPosition > (upperDistanceThreshold + cameraZDistanceFromOriginMeters)) {
+                    continue;
+                }
+
                 // Create a Pose2d of the object and convert it to robot space.
                 Pose2d objectPoseRobotSpace = new Pose2d(zPosition, xPosition);
                 Pose2d objectPoseWorldSpace = robotToFieldSpaceConversion.apply(objectPoseRobotSpace);
@@ -289,9 +307,9 @@ public class SampleDetectionPipeline extends OpenCvPipeline {
 
                 // Round all estimated positional values so that the image can be more clearly read and distinguished.
                 DecimalFormat decimalFormat = new DecimalFormat("#.####");
-                String roundedXPositionMeters = decimalFormat.format(xPosition);
+                String roundedXPositionMeters = decimalFormat.format(xPosition + cameraZDistanceFromOriginMeters);
                 String roundedYPositionMeters =  decimalFormat.format(yPosition);
-                String roundedZPositionMeters =  decimalFormat.format(zPosition);
+                String roundedZPositionMeters =  decimalFormat.format(zPosition - cameraXDistanceFromOriginMeters);
 
                 // Create a message that can be displayed on the image.
                 String positionText = "(" + roundedXPositionMeters + "," + roundedYPositionMeters + "," +
@@ -470,6 +488,24 @@ public class SampleDetectionPipeline extends OpenCvPipeline {
      */
     public void captureFrame() {
         shouldCaptureFrame = true;
+    }
+
+    /**
+     * Set whether or not this pipeline will record new vision data.
+     *
+     * @param pauseCapture Whether or not this pipeline will record new vision data.
+     */
+    public void setPauseCapture(boolean pauseCapture) {
+        this.pauseCapture = pauseCapture;
+    }
+
+    /**
+     * Returns the runtime of this pipeline.
+     *
+     * @return The runtime of this pipeline.
+     */
+    public double getVisionTimeSeconds() {
+        return this.visionRuntime.getElapsedTime(TimeUnit.SECOND);
     }
 
     /**

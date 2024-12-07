@@ -8,18 +8,27 @@ import org.firstinspires.ftc.teamcode.Subsystems.Arm.LinearSlides;
 import org.firstinspires.ftc.teamcode.Subsystems.Arm.Manipulator;
 import org.firstinspires.ftc.teamcode.Subsystems.Drivetrain;
 import org.firstinspires.ftc.teamcode.Subsystems.Vision.ComputerVision;
+import org.firstinspires.ftc.teamcode.Subsystems.Vision.Sample;
 import org.firstinspires.ftc.teamcode.Utility.Autonomous.Alliance;
 import org.firstinspires.ftc.teamcode.Utility.Autonomous.AutonomousRoutine;
+import org.firstinspires.ftc.teamcode.Utility.Constants;
 import org.firstinspires.ftc.teamcode.Utility.Geometry.Pose2d;
+import org.firstinspires.ftc.teamcode.Utility.Geometry.Rotation2d;
+import org.firstinspires.ftc.teamcode.Utility.Time.ElapsedTime;
+import org.firstinspires.ftc.teamcode.Utility.Time.TimeUnit;
+
+import java.util.List;
 
 public class SearchAndGrabSpikemarkSamplesCommand extends CommandBase {
 
     // Settings
-    private Pose2d redTwoSearchPosition;
-    private Pose2d redOneSearchPosition;
+    private Pose2d redOneSearchPosition = new Pose2d(1.202903, 0.739140, new Rotation2d(2.35619, 0));
+    private Pose2d blueOneSearchPosition = new Pose2d(-1.202903, 0.739140);
 
-    private Pose2d blueTwoSearchPosition;
-    private Pose2d blueOneSearchPosition;
+    private Pose2d redThirdSpikemarkPose = new Pose2d(0.660832, 1.779);
+    private Pose2d blueThirdSpikemarkPose = new Pose2d(-0.660832, 1.779);
+
+    private double manipulatorCloseTimeSeconds = 1.25;
 
     // Subsystems
     private Drivetrain drivetrain;
@@ -31,8 +40,10 @@ public class SearchAndGrabSpikemarkSamplesCommand extends CommandBase {
     // Storage
     private AutonomousRoutine autonomousRoutine;
     private Pose2d searchLocation;
-    // TODO: Set sample finder stuff.
+    private Pose2d thirdSpikemarkPose;
     private Pose2d targetSamplePosition;
+    private ElapsedTime manipulatorTimer = new ElapsedTime();
+    private double rotationalOffsetSampleGrab = 0;
 
     // Flags
     private boolean isFinished = false;
@@ -41,41 +52,38 @@ public class SearchAndGrabSpikemarkSamplesCommand extends CommandBase {
     private boolean atSearchLocation = false;
     private boolean foundSampleTarget = false;
     private boolean atSampleGrabLocation = false;
+    private boolean timerRestFlag = false;
 
     /**
      * Create a new SearchAndGrabSpikemarkSamplesCommand instance using the given subsystems for the given auto.
      *
      * @param drivetrain An instance of the robot's drivetrain.
      * @param computerVision An instance of the robot's computer vision.
-     * @param manipulator An instance of the robot's manipulator.
-     * @param alliance The alliance this robot is on.
      * @param autonomousRoutine The autonomous routine this robot is running.
      */
-    public SearchAndGrabSpikemarkSamplesCommand(Drivetrain drivetrain, ComputerVision computerVision, Arm arm, LinearSlides linearSLides, Manipulator manipulator, AutonomousRoutine autonomousRoutine) {
+    public SearchAndGrabSpikemarkSamplesCommand(Drivetrain drivetrain, ComputerVision computerVision, Arm arm, AutonomousRoutine autonomousRoutine) {
 
         // Store the necessary subsystems for this command's usage.
         this.drivetrain = drivetrain;
         this.computerVision = computerVision;
         this.arm = arm;
-        this.linearSlides = linearSLides;
-        this.manipulator = manipulator;
+        this.linearSlides = this.arm.getLinearSlides();
+        this.manipulator = this.arm.getManipulator();
 
         // Store the autonomous information to determine how this command is run.
         this.autonomousRoutine = autonomousRoutine;
 
         // Configure autonomous specific values.
         switch (this.autonomousRoutine) {
-            case RED_TWO:
-                this.searchLocation = redTwoSearchPosition;
-                break;
             case RED_ONE:
                 this.searchLocation = redOneSearchPosition;
-                break;
-            case BLUE_TWO:
-                this.searchLocation = blueTwoSearchPosition;
+                this.thirdSpikemarkPose = redThirdSpikemarkPose;
+                this.rotationalOffsetSampleGrab = -Math.PI;
                 break;
             case BLUE_ONE:
                 this.searchLocation = blueOneSearchPosition;
+                this.thirdSpikemarkPose = blueThirdSpikemarkPose;
+                this.rotationalOffsetSampleGrab = 0;
                 break;
         }
     }
@@ -94,7 +102,7 @@ public class SearchAndGrabSpikemarkSamplesCommand extends CommandBase {
         this.linearSlides.toggleAutonomousControl(true);
 
         // Open the claw and lower the wrist to be level with the ground.
-        this.manipulator.setWristPosition(0); // TODO: TUNE wrist angle to be level with ground at base.
+        this.manipulator.setWristPosition(1);
         this.manipulator.openClaw();
 
         // Clear old data.
@@ -107,6 +115,7 @@ public class SearchAndGrabSpikemarkSamplesCommand extends CommandBase {
         this.atSearchLocation = false;
         this.foundSampleTarget = false;
         this.atSampleGrabLocation = false;
+        this.timerRestFlag = false;
     }
 
     @Override
@@ -120,15 +129,19 @@ public class SearchAndGrabSpikemarkSamplesCommand extends CommandBase {
 
         // If a sample target hasn't bee found, then get the closest sample. If there aren't any samples that can be see, wait until we can see one.
         if (!foundSampleTarget) {
-            Pose2d samplePosition = getSampleTarget(); // TODO: Switch to sample object. Preform necessary actions to improve performance.
+
+            // Get the closest sample target.
+            Pose2d samplePosition = getSampleTarget();
+
+            // If there isn't a closest sample, then try again.
             if (samplePosition == null) {
                 return;
-            } else {
-                //TODO: Do magic to translate to robot origin position.
-                this.targetSamplePosition = samplePosition;
             }
 
-            this.drivetrain.setTargetPosition(this.targetSamplePosition); // TODO: Adjust based on in-match performance.
+            // Go to the target position.
+            this.targetSamplePosition = samplePosition;
+            this.foundSampleTarget = true;
+            this.drivetrain.setTargetPosition(this.targetSamplePosition);
         }
 
         // If the robot isn't yet at the location where it needs to grab samples, then update necessary flags
@@ -141,8 +154,18 @@ public class SearchAndGrabSpikemarkSamplesCommand extends CommandBase {
         // Close the manipulator claw around the sample.
         this.manipulator.closeClaw();
 
-        // TODO: Determine whether or not we can wait for it to be fully closed or if we can set a timer/delay.
+        // If the close timer hasn't bee reset, then reset it so that we can stop the command once the manipulator has fully closed.
+        if (!timerRestFlag) {
+            timerRestFlag = true;
+            this.manipulatorTimer.reset();
+        }
 
+        // If the manipulator hasn't finished closing, return.
+        if (this.manipulatorTimer.getElapsedTime(TimeUnit.SECOND) < manipulatorCloseTimeSeconds) {
+            return;
+        }
+
+        // The command has finished running.
         this.isFinished = true;
     }
 
@@ -161,8 +184,51 @@ public class SearchAndGrabSpikemarkSamplesCommand extends CommandBase {
      * @return Return the position of the desired colored sample to the robot.
      */
     private Pose2d getSampleTarget() {
-        // TODO: Write code to find the closest, most recent sample. Maybe remove this sample from the list of seen samples.
-        return null;
+        List<Sample> detectedObjects = this.computerVision.getDetectedObjects();
+
+        // Get the robot's current position.
+        Pose2d robotPosition = this.drivetrain.getRobotPosition();
+
+        // Storage
+        double closestObjectDistance = 5;
+        Sample closestObject = null;
+
+        // Loop through all of the detected objects and store the closest one.
+        for (Sample detectedObject : detectedObjects) {
+            double distanceToObject = Pose2d.getAbsolutePositionalDistanceTo(robotPosition, detectedObject.getFieldPosition());
+
+            // If the object is closer than the current closest object, set this object as the closest object.
+            if (distanceToObject < closestObjectDistance) {
+                closestObject = detectedObject;
+                closestObjectDistance = distanceToObject;
+            }
+        }
+
+        if (closestObject == null) {
+            return null;
+        }
+
+        // Get the detected object's position.
+        Pose2d detectedObjectFieldPosition = closestObject.getFieldPosition().clone();
+
+        // If the objet is the last one on the last spike mark, then grab it differently.
+        if (Pose2d.getAbsolutePositionalDistanceTo(thirdSpikemarkPose, detectedObjectFieldPosition) <= 0.1778) {
+            Pose2d grabPositionOffset = Constants.AutoConstants.GRAB_OFFSET_ROBOT_CENTRIC_ROTATED.clone();
+            grabPositionOffset = this.drivetrain.getCoordinateSystem().robotSpaceToFieldSpace(grabPositionOffset);
+            Pose2d robotTargetPosition = new Pose2d(detectedObjectFieldPosition.getX(), detectedObjectFieldPosition.getZ(), new Rotation2d(1.5708, 0));
+            grabPositionOffset.addValues(grabPositionOffset);
+            detectedObjectFieldPosition.setYaw(this.rotationalOffsetSampleGrab);
+            return robotTargetPosition;
+        }
+
+        // Offset the sample grab position such that the robot can grab it.
+        Pose2d grabPositionOffset = Constants.AutoConstants.GRAB_OFFSET_ROBOT_CENTRIC.clone();
+        grabPositionOffset = this.drivetrain.getCoordinateSystem().robotSpaceToFieldSpace(grabPositionOffset);
+        detectedObjectFieldPosition.addValues(grabPositionOffset);
+        detectedObjectFieldPosition.setYaw(this.rotationalOffsetSampleGrab);
+
+        // Return the detected object's position.
+        return detectedObjectFieldPosition;
     }
 
     /**

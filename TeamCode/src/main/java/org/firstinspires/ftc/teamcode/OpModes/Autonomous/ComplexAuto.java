@@ -3,7 +3,11 @@ package org.firstinspires.ftc.teamcode.OpModes.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.Gamepad;
+import com.sun.tools.javac.util.List;
 
+import org.firstinspires.ftc.teamcode.Commands.AutonomousCommands.CreateSpecimenCommand;
+import org.firstinspires.ftc.teamcode.Commands.AutonomousCommands.ScoreSpecimenCommand;
+import org.firstinspires.ftc.teamcode.Commands.AutonomousCommands.SearchAndGrabSpikemarkSamplesCommand;
 import org.firstinspires.ftc.teamcode.Commands.CommandScheduler;
 import org.firstinspires.ftc.teamcode.Exceptions.NullCommandException;
 import org.firstinspires.ftc.teamcode.Exceptions.UnscheduledCommandException;
@@ -11,16 +15,21 @@ import org.firstinspires.ftc.teamcode.Subsystems.Arm.Arm;
 import org.firstinspires.ftc.teamcode.Subsystems.Drivetrain;
 import org.firstinspires.ftc.teamcode.Subsystems.RobotHardware;
 import org.firstinspires.ftc.teamcode.Subsystems.Vision.ComputerVision;
-import org.firstinspires.ftc.teamcode.Subsystems.Vision.GenericSamplePipeline;
-import org.firstinspires.ftc.teamcode.Utility.Autonomous.Alliance;
+import org.firstinspires.ftc.teamcode.Subsystems.Vision.SampleDetectionPipeline;
 import org.firstinspires.ftc.teamcode.Utility.Autonomous.AutonomousRoutine;
+import org.firstinspires.ftc.teamcode.Utility.Geometry.Pose2d;
 import org.firstinspires.ftc.teamcode.Utility.Storage.DataLogger;
+import org.firstinspires.ftc.teamcode.Utility.Storage.FileEx;
+
+import java.util.HashSet;
+import java.util.Set;
 
 @Autonomous (name = "Complex Auto", group = "2024-2025")
 public class ComplexAuto extends LinearOpMode {
 
     RobotHardware robotHardware;
     DataLogger dataLogger;
+    FileEx robotPositionFile = new FileEx("RobotPose");
     @Override
     public void runOpMode() throws InterruptedException {
 
@@ -76,15 +85,29 @@ public class ComplexAuto extends LinearOpMode {
         Arm arm = robotHardware.robotArm;
 
         ComputerVision computerVision = robotHardware.computerVision;
-        GenericSamplePipeline genericSamplePipeline = computerVision.getGenericSamplePipeline();
+        SampleDetectionPipeline genericSamplePipeline = computerVision.getSampleDetectionPipeline();
 
-        // Create and schedule different command based on which autonomous routine was selected.
-        switch (autonomousRoutine) {
-            // TODO: Fill in!
-        }
+        // Create the autonomous commands.
+        ScoreSpecimenCommand scoreSpecimenCommand = new ScoreSpecimenCommand(drivetrain, arm, autonomousRoutine);
+        SearchAndGrabSpikemarkSamplesCommand searchAndGrabSpikemarkSamplesCommand = new SearchAndGrabSpikemarkSamplesCommand(drivetrain, computerVision, arm, autonomousRoutine);
+        CreateSpecimenCommand createSpecimenCommand = new CreateSpecimenCommand(drivetrain, computerVision, arm, autonomousRoutine);
+        createSpecimenCommand.setScoreCommandID(scoreSpecimenCommand.getID());
+
+        // Schedule the commands
+        commandScheduler.scheduleCommand(scoreSpecimenCommand, 1, drivetrain, arm, arm.getLinearSlides(), arm.getManipulator());
+        commandScheduler.scheduleCommand(searchAndGrabSpikemarkSamplesCommand, 1, drivetrain, computerVision, arm, arm.getLinearSlides(), arm.getManipulator());
+        commandScheduler.scheduleCommand(createSpecimenCommand, 1, drivetrain, computerVision, arm, arm.getLinearSlides(), arm.getManipulator());
 
         // Prevent auto from running early if the guide button is pressed.
         waitForStart();
+
+        // Activate the first command added.
+        Set<String> commandsToActivate = new HashSet<>(List.of(scoreSpecimenCommand.getID()));
+        try {
+            commandScheduler.activateCommands(commandsToActivate);
+        } catch (UnscheduledCommandException e) {
+            throw new RuntimeException(e);
+        }
 
         while (opModeIsActive()) {
 
@@ -98,5 +121,11 @@ public class ComplexAuto extends LinearOpMode {
             // Call the periodic function of all hardware.
             robotHardware.periodic();
         }
+
+        Pose2d robotPosition = robotHardware.drivetrain.getRobotPosition();
+        robotPositionFile.addData("x",robotPosition.getX());
+        robotPositionFile.addData("z",robotPosition.getZ());
+        robotPositionFile.addData("theta",robotPosition.getYawInRadians());
+        robotPositionFile.saveData();
     }
 }

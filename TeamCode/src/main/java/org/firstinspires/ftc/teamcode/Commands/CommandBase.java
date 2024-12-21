@@ -9,7 +9,7 @@ import org.firstinspires.ftc.teamcode.Utility.Constants;
 abstract public class CommandBase {
 
     // Storage
-    private CommandGroupBase parentCommand;
+    protected CommandGroupBase parentCommand;
     private String parentID; // The ID of the command group this command is located in. If the command isn't in a command group, there won't be any parent ID.
     private String commandID;
 

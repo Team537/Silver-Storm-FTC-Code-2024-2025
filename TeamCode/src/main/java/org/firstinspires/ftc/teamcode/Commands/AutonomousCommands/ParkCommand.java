@@ -4,7 +4,7 @@ import org.firstinspires.ftc.teamcode.Commands.CommandBase;
 import org.firstinspires.ftc.teamcode.Exceptions.NullCommandException;
 import org.firstinspires.ftc.teamcode.Exceptions.UnscheduledCommandException;
 
-public class ScoreSampleCommand extends CommandBase {
+public class ParkCommand extends CommandBase {
     @Override
     public void init() {
 

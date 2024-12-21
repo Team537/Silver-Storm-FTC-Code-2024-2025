@@ -79,14 +79,14 @@ public class Manipulator implements Subsystem {
      * Adjusts the hardware such that it begins intaking samples.
      */
     public void openClaw() {
-        servoController.setServoPosition(4, 1);
+        servoController.setServoPosition(4, 0);
     }
 
     /**
      * Adjusts the hardware such that it begins outtaking samples.
      */
     public void closeClaw() {
-        servoController.setServoPosition(4, 0);
+        servoController.setServoPosition(4, 1);
     }
 
     @Override

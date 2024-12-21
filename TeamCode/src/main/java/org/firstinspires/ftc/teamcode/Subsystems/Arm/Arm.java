@@ -224,10 +224,12 @@ public class Arm implements Subsystem {
         }
 
         // Output diagnostic data.
-        telemetry.addLine("Arm Position: " + armMotor.getCurrentPosition());
+        //telemetry.addLine("Arm Position: " + armMotor.getCurrentPosition());
         telemetry.addLine("Arm Angle: " + (getArmAngle() / Math.PI * 180));
-        telemetry.addLine("Target Position: " + targetPosition);
+        //telemetry.addLine("Target Position: " + targetPosition);
         telemetry.addLine("Target Position (Deg): " + (targetPosition / Math.PI * 180));
-        telemetry.addLine("IsActive" + autonomousControlActive);
+        //telemetry.addLine("IsActive" + autonomousControlActive);
+        telemetry.addLine("Arm At Target: " + atTargetPosition());
+
     }
 }

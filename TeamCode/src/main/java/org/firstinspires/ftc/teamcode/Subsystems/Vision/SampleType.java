@@ -3,8 +3,8 @@ package org.firstinspires.ftc.teamcode.Subsystems.Vision;
 import org.opencv.core.Scalar;
 
 public enum SampleType {
-    RED ("RED", new Scalar(0,175,54), new Scalar(188,255,255)), // TODO: Tune
-    BLUE ("BLUE", new Scalar(0, 0, 0), new Scalar(0, 0, 0)), // TODO: Tune
+    RED ("RED", new Scalar(0,191,60), new Scalar(180,255,255)), // TODO: Tune
+    BLUE ("BLUE", new Scalar(110,85,0), new Scalar(180,242,213)), // TODO: Tune
     NEUTRAL ("NEUTRAL", new Scalar(5,188,68), new Scalar(17,255,152));
 
     private final String sampleName;

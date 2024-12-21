@@ -313,6 +313,15 @@ public class Drivetrain implements Subsystem{
     }
 
     /**
+     * Return this drivetrain's target position as a Pose2d.
+     *
+     * @return This drivetrain's target position as a Pose2d.
+     */
+    public Pose2d getTargetPosition() {
+        return targetPosition;
+    }
+
+    /**
      * Returns whether or not the robot is driving in a field centric manner.
      *
      * @return Whether or not the robot is driving in a field centric manner.
@@ -425,10 +434,11 @@ public class Drivetrain implements Subsystem{
         coordinateSystem.periodic();
 
         // Output diagnostic data.
-        telemetry.addLine("Target X (m): " + targetPosition.getX());
-        telemetry.addLine("Target Z (m): " + targetPosition.getZ());
-        telemetry.addLine("Target Rotation: " + (targetPosition.getYawInRadians() * 180 / Math.PI));
-        telemetry.addLine("Active : " + autonomousControlActive);
+        //telemetry.addLine("Target X (m): " + targetPosition.getX());
+        //telemetry.addLine("Target Z (m): " + targetPosition.getZ());
+        //telemetry.addLine("Target Rotation: " + (targetPosition.getYawInRadians() * 180 / Math.PI));
+        //telemetry.addLine("Active : " + autonomousControlActive);
+        telemetry.addLine("Drivetrain at Target Position: " + atTargetPosition());
 
         // If told to do so, drive autonomously.
         if (autonomousControlActive) {

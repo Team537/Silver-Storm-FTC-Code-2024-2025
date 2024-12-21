@@ -434,10 +434,11 @@ public class Drivetrain implements Subsystem{
         coordinateSystem.periodic();
 
         // Output diagnostic data.
-        telemetry.addLine("Target X (m): " + targetPosition.getX());
-        telemetry.addLine("Target Z (m): " + targetPosition.getZ());
-        telemetry.addLine("Target Rotation: " + (targetPosition.getYawInRadians() * 180 / Math.PI));
-        telemetry.addLine("Active : " + autonomousControlActive);
+        //telemetry.addLine("Target X (m): " + targetPosition.getX());
+        //telemetry.addLine("Target Z (m): " + targetPosition.getZ());
+        //telemetry.addLine("Target Rotation: " + (targetPosition.getYawInRadians() * 180 / Math.PI));
+        //telemetry.addLine("Active : " + autonomousControlActive);
+        telemetry.addLine("Drivetrain at Target Position: " + atTargetPosition());
 
         // If told to do so, drive autonomously.
         if (autonomousControlActive) {

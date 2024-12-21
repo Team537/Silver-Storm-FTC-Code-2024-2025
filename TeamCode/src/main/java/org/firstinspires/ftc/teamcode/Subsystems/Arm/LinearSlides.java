@@ -11,7 +11,7 @@ import org.firstinspires.ftc.teamcode.Utility.Controllers.PIDController;
 public class LinearSlides implements Subsystem {
 
     // Settings
-    private final double ERROR_TOLLERANCE_METERS = 0.01;
+    private final double ERROR_TOLLERANCE_METERS = 0.01524;
 
     // Conversion Values
     private final double TICKS_TO_EXTENSION_DISTANCE_METERS = 0.00008604909 ;
@@ -165,9 +165,10 @@ public class LinearSlides implements Subsystem {
             return;
         }
 
-        telemetry.addLine("Slide Position: " + slideMotor.getCurrentPosition());
-        telemetry.addLine("Slide Position (m): " + getExtensionDistance());
+        //telemetry.addLine("Slide Position: " + slideMotor.getCurrentPosition());
+        //telemetry.addLine("Slide Position (m): " + getExtensionDistance());
         telemetry.addLine("Slide Position (in): " + getExtensionDistance() * 39.37);
+        telemetry.addLine("Slides At Target: " + atTargetPosition());
 
         // Update motor velocity based on current system state.
         if (autonomousControlActive) {

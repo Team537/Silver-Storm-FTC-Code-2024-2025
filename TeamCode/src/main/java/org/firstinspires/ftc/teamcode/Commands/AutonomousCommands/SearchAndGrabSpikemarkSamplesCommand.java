@@ -23,9 +23,9 @@ public class SearchAndGrabSpikemarkSamplesCommand extends CommandBase {
 
     // Settings
     private Pose2d redOneSearchPosition = new Pose2d(1.202903, 0.739140, new Rotation2d(2.35619, 0));
-    private Pose2d blueOneSearchPosition = new Pose2d(-1.202903, 0.739140);
+    private Pose2d blueOneSearchPosition = new Pose2d(-1.202903, -0.739140, new Rotation2d(-0.785398, 0));
 
-    private Pose2d redThirdSpikemarkPose = new Pose2d(0.660832, 1.779);
+    private Pose2d redThirdSpikemarkPose = new Pose2d(0.660832, -1.779);
     private Pose2d blueThirdSpikemarkPose = new Pose2d(-0.660832, 1.779);
 
     private double manipulatorCloseTimeSeconds = 1.25;

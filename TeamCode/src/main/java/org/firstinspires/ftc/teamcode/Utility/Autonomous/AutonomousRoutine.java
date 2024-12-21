@@ -6,7 +6,7 @@ import org.firstinspires.ftc.teamcode.Utility.Geometry.Rotation2d;
 public enum AutonomousRoutine {
     RED_ONE (Alliance.RED, new Pose2d(1.614148, 0.413513, new Rotation2d(-Math.PI, 0))),
     RED_TWO (Alliance.RED, new Pose2d()),
-    BLUE_ONE (Alliance.BLUE, new Pose2d(-1.614148, 0.413513, new Rotation2d(0, 0))),
+    BLUE_ONE (Alliance.BLUE, new Pose2d(-1.614148, -0.413513, new Rotation2d(0, 0))),
     BLUE_TWO (Alliance.BLUE, new Pose2d());
 
     private final Alliance ALLIANCE;

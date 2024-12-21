@@ -120,6 +120,7 @@ public class ComplexAuto extends LinearOpMode {
 
             // Call the periodic function of all hardware.
             robotHardware.periodic();
+            telemetry.update();
         }
 
         Pose2d robotPosition = robotHardware.drivetrain.getRobotPosition();

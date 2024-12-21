@@ -24,11 +24,11 @@ import java.util.List;
 public class CreateSpecimenCommand extends CommandBase {
 
     // Settings
-    private Pose2d redDropoffLocation = new Pose2d(1.038032, 1.409193);
-    private Pose2d redWaitLocation = new Pose2d(1.143, 1.409193);
+    private Pose2d redDropoffLocation = new Pose2d(1.342832, 1.409193);
+    private Pose2d redWaitLocation = new Pose2d(1.038032, 1.409193);
 
-    private Pose2d blueDropoffLocation = new Pose2d(-1.038032, 1.409193, new Rotation2d(Math.toRadians(-180), 0));
-    private Pose2d blueWaitLocation = new Pose2d(-1.143, 1.409193, new Rotation2d(Math.toRadians(-180), 0));
+    private Pose2d blueDropoffLocation = new Pose2d(-1.342832, -1.409193, new Rotation2d(Math.toRadians(-180), 0));
+    private Pose2d blueWaitLocation = new Pose2d(-1.038032, -1.409193, new Rotation2d(Math.toRadians(-180), 0));
 
     private double specimenCreationTime = 5;
     private double manipulatorOpenTime = .75;
@@ -120,8 +120,10 @@ public class CreateSpecimenCommand extends CommandBase {
         this.linearSlidesFullyRetracted = false;
         this.manipulatorOpenTimerReset = false;
         this.waitTimerReset = false;
+        this.reenabledCameraData = false;
         this.hasSampleTarget = false;
         this.atGrabLocation = false;
+        this.manipulatorClosedTimerReset = false;
     }
 
     @Override

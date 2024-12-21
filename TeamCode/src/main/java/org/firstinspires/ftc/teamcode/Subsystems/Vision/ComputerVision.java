@@ -48,7 +48,7 @@ public class ComputerVision implements Subsystem {
         neutralSamplePipeline.setDistortionCoefficients(LogitechBrio100Constants.DISTORTION_COEFFICIENTS);
         neutralSamplePipeline.setIntrinsicCameraMatrix(LogitechBrio100Constants.CAMERA_MATRIX);
         neutralSamplePipeline.setExtrinsicCameraMatrix(LogitechBrio100Constants.CAMERA_ROTATION_MATRIX, LogitechBrio100Constants.CAMERA_TRANSLATION_MATRIX);
-        neutralSamplePipeline.setCurrentSampleType(SampleType.RED);
+        neutralSamplePipeline.setCurrentSampleType(SampleType.BLUE);
         
         // Setup the camera
         setupCamera(hardwareMap);

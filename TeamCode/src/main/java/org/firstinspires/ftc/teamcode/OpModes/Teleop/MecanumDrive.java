@@ -6,6 +6,7 @@ import com.qualcomm.robotcore.hardware.Gamepad;
 
 import org.firstinspires.ftc.teamcode.Subsystems.RobotHardware;
 import org.firstinspires.ftc.teamcode.Utility.Autonomous.Alliance;
+import org.firstinspires.ftc.teamcode.Utility.Controllers.PIDController;
 import org.firstinspires.ftc.teamcode.Utility.Controllers.RotationalPIDController;
 import org.firstinspires.ftc.teamcode.Utility.Geometry.Pose2d;
 import org.firstinspires.ftc.teamcode.Utility.Geometry.Rotation2d;
@@ -20,6 +21,9 @@ public class MecanumDrive extends LinearOpMode {
     private Pose2d blueOneScoringLocation = new Pose2d(1.2944, 0.102998, new Rotation2d(0, 0));
     private RobotHardware robotHardware;
     private RotationalPIDController rotationalPIDController = new RotationalPIDController(0.5, 0.005, 0);
+    private PIDController xPIDController = new PIDController(1.25, 0.005, 0);
+    private PIDController zPIDController = new PIDController(1.25, 0.005, 0);
+
     @Override
     public void runOpMode()  {
 
@@ -57,7 +61,12 @@ public class MecanumDrive extends LinearOpMode {
 
         // Rotational Correction
         ElapsedTime rotationalFreeTime = new ElapsedTime();
+        ElapsedTime xFreeTime = new ElapsedTime();
+        ElapsedTime zFreeTime = new ElapsedTime();
+
         double lockedAngle = theta;
+        double lockedX = theta;
+        double lockedZ = theta;
 
         // While the opmode is active, allow the robot to be controlled by the driver and display
         // useful diagnostic information.
@@ -74,7 +83,7 @@ public class MecanumDrive extends LinearOpMode {
 
             // Arm position and movement.
             if (currentGamepad.dpad_down && !previousGamepad.dpad_down) {
-                robotHardware.robotArm.setTargetPosition(robotHardware.robotArm.getStartingAngleRadians());
+                robotHardware.robotArm.setTargetArmPositionRadians(robotHardware.robotArm.getStartingAngleRadians());
                 robotHardware.robotArm.getManipulator().setWristPosition(1);
                 robotHardware.robotArm.toggleAutonomousControl(true);
             }
@@ -84,7 +93,7 @@ public class MecanumDrive extends LinearOpMode {
                 robotHardware.robotArm.toggleAutonomousControl(true);
             }
             if (currentGamepad.dpad_right && !previousGamepad.dpad_right) {
-                robotHardware.robotArm.setTargetPosition(40);
+                robotHardware.robotArm.setTargetPosition(43);
                 robotHardware.robotArm.getManipulator().setWristPosition(.45);
                 robotHardware.robotArm.toggleAutonomousControl(true);
             }
@@ -132,6 +141,7 @@ public class MecanumDrive extends LinearOpMode {
                 slideExtensionLength = Math.min(11, slideExtensionLength);
                 slideExtensionLength = Math.max(0, slideExtensionLength);
                 robotHardware.robotArm.getLinearSlides().setTargetLengthInches(slideExtensionLength);
+                robotHardware.robotArm.getLinearSlides().toggleAutonomousControl(true);
             }
 
             if (currentGamepadTwo.dpad_down && !previousGamepadTwo.dpad_down) {
@@ -192,6 +202,9 @@ public class MecanumDrive extends LinearOpMode {
             double curvedRotationalInput = Math.pow(Math.abs(rotationalInput), 1.7) * Math.signum(rotationalInput); // Curve rotational input
 
             // Get the robot's current angle in radians (from the drivetrain's sensors or odometry)
+            Pose2d currentRobotPosition = robotHardware.drivetrain.getRobotPosition();
+            double robotX = currentRobotPosition.getX();
+            double robotZ = currentRobotPosition.getZ();
             double robotAngle = robotHardware.drivetrain.getRobotPosition().getYawInRadians();
 
             // If rotational input is very small (indicating the driver is not actively turning)

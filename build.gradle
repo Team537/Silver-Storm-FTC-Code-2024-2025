@@ -7,7 +7,6 @@
 plugins {
     id 'com.github.spotbugs' version '5.0.13'
     id 'org.owasp.dependencycheck' version '8.4.0'
-    
 }
 
 buildscript {
@@ -18,7 +17,6 @@ buildscript {
     dependencies {
         // Note for FTC Teams: Do not modify this yourself.
         classpath 'com.android.tools.build:gradle:7.2.0'
-        spotbugs 'com.github.spotbugs:spotbugs:4.7.3'
     }
 }
 
@@ -35,6 +33,7 @@ repositories {
     mavenCentral()
 }
 
+// SpotBugs configuration
 tasks.withType(com.github.spotbugs.SpotBugsTask) {
     reports {
         xml.enabled = false
@@ -42,3 +41,14 @@ tasks.withType(com.github.spotbugs.SpotBugsTask) {
     }
 }
 
+// OWASP Dependency Check configuration
+dependencyCheck {
+    format = 'ALL'
+    outputDirectory = "${buildDir}/reports/dependency-check"
+    failBuildOnCVSS = 7.0 // Fail build if vulnerabilities with CVSS >= 7.0 are found
+}
+
+tasks.register('runDependencyCheck', org.owasp.dependencycheck.gradle.tasks.Check) {
+    group = 'verification'
+    description = 'Runs OWASP Dependency Check analysis.'
+}

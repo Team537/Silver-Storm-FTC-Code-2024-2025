@@ -44,6 +44,33 @@ public class Pose2d {
     }
 
     /**
+     * Creates a new Pose2d object using the given values.
+     *
+     * @param xMeters The x position, in meters.
+     * @param zMeters The z position, in meters.
+     * @param yawRadians The heading of the position, in radians.
+     */
+    public Pose2d(double xMeters, double zMeters, double yawRadians) {
+        this.x = xMeters;
+        this.z = zMeters;
+        this.rotation2d = new Rotation2d(yawRadians, 0);
+    }
+
+    /**
+     * Creates a new Pose2d object using the given values.
+     *
+     * @param xMeters The x position, in meters.
+     * @param zMeters The z position, in meters.
+     * @param yawRadians The yaw of the position, in radians.
+     * @param pitchRadians The pitch  of the position, in radians.
+     */
+    public Pose2d(double xMeters, double zMeters, double yawRadians, double pitchRadians) {
+        this.x = xMeters;
+        this.z = zMeters;
+        this.rotation2d = new Rotation2d(yawRadians, pitchRadians);
+    }
+
+    /**
      * Create a Pose2d object with the rotational values of another Pose2d.
      *
      * @param pose2d The Pose2d who's values will be clones to this Pose2d.
@@ -80,7 +107,7 @@ public class Pose2d {
      * @param targetPosition The position you wish to find the distance to.
      * @return The distance to the provided point, as a double.
      */
-    static double getAbsolutePositionalDistanceTo(Pose2d originPosition, Pose2d targetPosition) {
+    public static double getAbsolutePositionalDistanceTo(Pose2d originPosition, Pose2d targetPosition) {
 
         // Calculate the distance between each point on each axis.
         double xDistanceMeters = originPosition.getX() - targetPosition.getX();
@@ -151,6 +178,23 @@ public class Pose2d {
     }
 
     /**
+     * Sets this Pose2d's yaw to the provided value.
+     *
+     * @param yawRadians The yaw, in radians.
+     */
+    public void setYaw(double yawRadians) {
+        this.rotation2d.setYaw(yawRadians);
+    }
+
+    /**
+     * Sets this Pose2d's pitch to the provided value.
+     *
+     * @param pitchRadians The pitch, in radians.
+     */
+    public void setPitch(double pitchRadians) {
+        this.rotation2d.setPitch(pitchRadians);
+    }
+    /**
      * Returns this Pose2d's x value, in meters.
      *
      * @return This Pose2d's x value, in meters.
@@ -169,20 +213,38 @@ public class Pose2d {
     }
 
     /**
-     * Returns the magnitude of this Pose2d.
-     *
-     * @return The magnitude of this Pose2d.
-     */
-    public double getMagnitude() {
-        return Math.sqrt(Math.pow(this.x, 2) + Math.pow(this.z, 2));
-    }
-
-    /**
      * Returns a clone of this Pose2d's rotation2d.
      *
      * @return A clone of this Pose2d's rotation2d.
      */
     public Rotation2d getRotation2d() {
         return new Rotation2d(this.rotation2d);
+    }
+
+    /**
+     * Returns this Pose2d's yaw in radians
+     *
+     * @return This Pose2d's yaw in radians
+     */
+    public double getYawInRadians() {
+        return this.rotation2d.getYawInRadians();
+    }
+
+    /**
+     * Returns this Pose2d's pitch in radians
+     *
+     * @return This Pose2d's pitch in radians
+     */
+    public double getPitchInRadians() {
+        return this.rotation2d.getPitchInRadians();
+    }
+
+    /**
+     * Returns the magnitude of this Pose2d.
+     *
+     * @return The magnitude of this Pose2d.
+     */
+    public double getMagnitude() {
+        return Math.sqrt(Math.pow(this.x, 2) + Math.pow(this.z, 2));
     }
 }

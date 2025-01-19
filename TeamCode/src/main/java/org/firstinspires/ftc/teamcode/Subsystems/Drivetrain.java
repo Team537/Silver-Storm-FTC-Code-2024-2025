@@ -11,24 +11,48 @@ import com.qualcomm.robotcore.hardware.IMU;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.teamcode.Subsystems.Odometry.CoordinateSystem;
 import org.firstinspires.ftc.teamcode.Utility.Constants.DrivetrainConstants;
+import org.firstinspires.ftc.teamcode.Utility.Controllers.PIDController;
+import org.firstinspires.ftc.teamcode.Utility.Controllers.RotationalPIDController;
 import org.firstinspires.ftc.teamcode.Utility.Geometry.Pose2d;
 
 public class Drivetrain implements Subsystem{
+
+    // Subsystems
+    private CoordinateSystem coordinateSystem;
 
     // Hardware
     private DcMotorEx frontRightDriveMotor;
     private DcMotorEx frontLeftDriveMotor;
     private DcMotorEx backRightDriveMotor;
     private DcMotorEx backLeftDriveMotor;
-    private IMU imu;
+
+    // PID Controllers
+    private RotationalPIDController rotationalPIDController;
+    private PIDController xPIDController;
+    private PIDController zPIDController;
+
+    // PID Coefficients
+    private final double ROTATIONAL_PROPORTIONAL_COEFFICIENT = 0.5;
+    private final double ROTATIONAL_DERIVATIVE_COEFFICIENT = 0.005;
+    private final double ROTATIONAL_INTEGRAL_COEFFICIENT = 0;
+
+    private final double POSITIONAL_PROPORTIONAL_COEFFICIENT = 1.25;
+    private final double POSITIONAL_DERIVATIVE_COEFFICIENT = 0.005;
+    private final double POSITIONAL_INTEGRAL_COEFFICIENT = 0;
+
+    // Target Storage
+    private Pose2d targetPosition = new Pose2d();
 
     // Settings
     private boolean fieldCentricEnabled = false;
     private boolean velocityDriveEnabled = false;
+    private double rotationalErrorToleranceRadians = 0.0174533;
+    private double positionalErrorToleranceMeters = 0.01016;
 
     // Flags
-    private boolean isSetup = false;
+    private boolean autonomousControlActive = false;
 
     // Storage
     private Pose2d robotPosition;
@@ -38,7 +62,8 @@ public class Drivetrain implements Subsystem{
      * Creates a new drivetrain, with the default starting position.
      */
     public Drivetrain() {
-        robotPosition = new Pose2d();
+        this.robotPosition = new Pose2d();
+        this.coordinateSystem = new CoordinateSystem();
     }
 
     /**
@@ -47,11 +72,13 @@ public class Drivetrain implements Subsystem{
      * @param startingLocation The robot's position on the field, as a Pose2d.
      */
     public Drivetrain(Pose2d startingLocation) {
-        robotPosition = startingLocation;
+        this.robotPosition = startingLocation;
+        this.coordinateSystem = new CoordinateSystem(startingLocation);
     }
 
     /**
      * Sets up the drivetrain so that it can function.
+     *
      * @param hardwareMap The opMode's hardware map. This is required in order to gian access
      *                          to the robot's hardware.
      * @param telemetry The opMode's telemetry. This is required in order to output
@@ -63,8 +90,21 @@ public class Drivetrain implements Subsystem{
         // Setup the robot's hardware.
         setupHardware(hardwareMap);
 
-        // Set the robot's position.
-        robotPosition = new Pose2d();
+        // Store the telemetry for future use.
+        this.telemetry = telemetry;
+
+        // Create PID Controller Objects.
+        this.rotationalPIDController = new RotationalPIDController(ROTATIONAL_PROPORTIONAL_COEFFICIENT, ROTATIONAL_INTEGRAL_COEFFICIENT, ROTATIONAL_DERIVATIVE_COEFFICIENT);
+        this.rotationalPIDController.setErrorTolerance(rotationalErrorToleranceRadians);
+
+        this.xPIDController = new PIDController(POSITIONAL_PROPORTIONAL_COEFFICIENT, POSITIONAL_DERIVATIVE_COEFFICIENT, POSITIONAL_INTEGRAL_COEFFICIENT);
+        this.xPIDController.setErrorTolerance(positionalErrorToleranceMeters);
+
+        this.zPIDController = new PIDController(POSITIONAL_PROPORTIONAL_COEFFICIENT, POSITIONAL_DERIVATIVE_COEFFICIENT, POSITIONAL_INTEGRAL_COEFFICIENT);
+        this.zPIDController.setErrorTolerance(positionalErrorToleranceMeters);
+
+        // Enable the coordinate system
+        coordinateSystem.init(hardwareMap, telemetry);
     }
 
     /**
@@ -94,10 +134,10 @@ public class Drivetrain implements Subsystem{
         backRightDriveMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         backLeftDriveMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
 
-        frontRightDriveMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        frontLeftDriveMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        backRightDriveMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        backLeftDriveMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        frontRightDriveMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        frontLeftDriveMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        backRightDriveMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        backLeftDriveMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         // Note: Most motors have one side reverse.
         // Due to this, we need to reverse one side of the motors so that the robot can drive straight.
@@ -105,16 +145,13 @@ public class Drivetrain implements Subsystem{
         frontLeftDriveMotor.setDirection(DcMotorSimple.Direction.REVERSE);
         backRightDriveMotor.setDirection(DcMotorSimple.Direction.FORWARD);
         backLeftDriveMotor.setDirection(DcMotorSimple.Direction.REVERSE);
+    }
 
-        // Create the IMU parameters that tell the IMU what direction its facing and allow us to use the
-        // robot's rotation for various calculations.
-        IMU.Parameters imuSettings = new IMU.Parameters(new RevHubOrientationOnRobot(
-                RevHubOrientationOnRobot.LogoFacingDirection.FORWARD,
-                RevHubOrientationOnRobot.UsbFacingDirection.UP));
-
-        // Initialize the IMU
-        imu = hardwareMap.get(IMU.class, "imu");
-        imu.initialize(imuSettings);
+    /**
+     * Resets the IMU such that the robot believes it is facing the zero direction.
+     */
+    public void resetIMU() {
+        this.coordinateSystem.resetIMU();
     }
 
     /**
@@ -136,24 +173,11 @@ public class Drivetrain implements Subsystem{
         if (fieldCentricEnabled ) {
 
             // Store the robot's rotation.
-            double robotYawRadians = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
+            double robotYawRadians = coordinateSystem.getRobotHeadingRadians(true);
 
             // Rotate the velocity value
             xMotion = (xInput * Math.cos(-robotYawRadians)) - (zInput * Math.sin(-robotYawRadians));
             zMotion = (xInput * Math.sin(-robotYawRadians)) + (zInput * Math.cos(-robotYawRadians));
-        }
-
-        // If velocityDrive is enabled, convert each motion value into a velocity value.
-        if (velocityDriveEnabled) {
-
-            // Get the max speed that each motor can turn and save it as a variable. his is done to
-            // improve code readability.
-            double maxAngularVelocity = DrivetrainConstants.MAX_MOTOR_ANGULAR_VELOCITY_RADIANS_PER_SECOND;
-
-            // Convert each value into a velocity value.
-            xMotion *= maxAngularVelocity;
-            zMotion *= maxAngularVelocity;
-            rotationalMotion *= maxAngularVelocity;
         }
 
         // Counteract Imperfect Strafing.
@@ -179,10 +203,13 @@ public class Drivetrain implements Subsystem{
         double absoluteMotionSum = Math.abs(xMotion) + Math.abs(zMotion) + Math.abs(rotationalMotion);
 
         // Calculate the denominator differently based on whether or not the robot is driving using velocity.
-        if (velocityDriveEnabled) {
-            scalingFactor = Math.max(absoluteMotionSum, DrivetrainConstants.MAX_MOTOR_ANGULAR_VELOCITY_RADIANS_PER_SECOND);
-        } else {
-            scalingFactor = Math.max(absoluteMotionSum, DrivetrainConstants.MAX_MOTOR_POWER);
+        scalingFactor = Math.max(absoluteMotionSum, DrivetrainConstants.MAX_MOTOR_POWER);
+
+        // If we are using velocity drive, convert the motor power value to velocity.
+        if(velocityDriveEnabled) {
+            xMotion *= DrivetrainConstants.MAX_MOTOR_TICKS_PER_SECOND;
+            zMotion *= DrivetrainConstants.MAX_MOTOR_TICKS_PER_SECOND;
+            rotationalMotion *= DrivetrainConstants.MAX_MOTOR_TICKS_PER_SECOND;
         }
 
         // Calculate the motion for each individual motor.
@@ -268,6 +295,33 @@ public class Drivetrain implements Subsystem{
     }
 
     /**
+     * Returns this robot's coordinate system.
+     *
+     * @return This robot's coordinate system.
+     */
+    public CoordinateSystem getCoordinateSystem() {
+        return this.coordinateSystem;
+    }
+
+    /**
+     * Returns this robot's position as a pose2d.
+     *
+     * @return This robot's position as a pose2d.
+     */
+    public Pose2d getRobotPosition() {
+        return this.coordinateSystem.getRobotPosition();
+    }
+
+    /**
+     * Return this drivetrain's target position as a Pose2d.
+     *
+     * @return This drivetrain's target position as a Pose2d.
+     */
+    public Pose2d getTargetPosition() {
+        return targetPosition;
+    }
+
+    /**
      * Returns whether or not the robot is driving in a field centric manner.
      *
      * @return Whether or not the robot is driving in a field centric manner.
@@ -285,8 +339,110 @@ public class Drivetrain implements Subsystem{
         return velocityDriveEnabled;
     }
 
+    /**
+     * Toggles whether or not this device can operate autonomously.
+     *
+     * @param autonomousControlActive Whether or not the robot can drive autonomously.
+     */
+    public void toggleAutonomousControl(boolean autonomousControlActive) {
+        this.autonomousControlActive = autonomousControlActive;
+    }
+
+    /**
+     * Sets the drivetrain's target position, as a Pose2d.
+     *
+     * @param targetPosition The drivetrain's target position, as a Pose2d.
+     */
+    public void setTargetPosition(Pose2d targetPosition) {
+        this.targetPosition = targetPosition;
+        rotationalPIDController.reset();
+        xPIDController.reset();
+        zPIDController.reset();
+    }
+
+    /**
+     * Sets the drivetrain's target rotation, in degrees.
+     *
+     * @param thetaDegrees The drivetrain's target rotation, in degrees.
+     */
+    public void setTargetRotation(double thetaDegrees) {
+        this.targetPosition.setYaw(Math.toRadians(thetaDegrees));
+        rotationalPIDController.reset();
+    }
+
+    private void calculateNewMotorPower() {
+
+        // Store the robot's rotation.
+        double robotYawRadians = coordinateSystem.getRobotHeadingRadians(false);
+
+        // Calculate the necessary motor powers to drive the robot.
+        double rotationalMotion = -this.rotationalPIDController.update(this.targetPosition.getYawInRadians(), robotYawRadians);
+        double xMotion = this.xPIDController.update(this.targetPosition.getX(), coordinateSystem.getRobotXCoordinateMeters());
+        double zMotion = -this.zPIDController.update(this.targetPosition.getZ(), coordinateSystem.getRobotZCoordinateMeters());
+
+        // Rotate the velocity value
+        double rotatedXMotion = (xMotion * Math.cos(-robotYawRadians)) - (zMotion * Math.sin(-robotYawRadians));
+        double rotatedZMotion = (xMotion * Math.sin(-robotYawRadians)) + (zMotion * Math.cos(-robotYawRadians));
+
+        // Account for imperfect straifing.
+        rotatedXMotion *= 1.1;
+
+        // The scalingFactor is the largest motor power / velocity.
+        // The motor power / velocity cannot exceed a specific value, so it needs to be scaled down
+        // in order to maintain a consistent ratio between each motor.
+        double scalingFactor;
+        double absoluteMotionSum = Math.abs(rotatedXMotion) + Math.abs(rotatedZMotion) + Math.abs(rotationalMotion);
+
+        // Calculate the denominator differently based on whether or not the robot is driving using velocity.
+        scalingFactor = Math.max(absoluteMotionSum, DrivetrainConstants.MAX_MOTOR_POWER);
+
+        // Calculate the motion for each individual motor.
+        double frontRightSpeed = (rotatedXMotion - rotatedZMotion - rotationalMotion) / scalingFactor;
+        double backRightSpeed = (rotatedXMotion + rotatedZMotion - rotationalMotion) / scalingFactor;
+        double frontLeftSpeed = (rotatedXMotion + rotatedZMotion + rotationalMotion) / scalingFactor;
+        double backLeftSpeed = (rotatedXMotion - rotatedZMotion + rotationalMotion) / scalingFactor;
+
+        // Set the robot's motor powers.
+        setMotorPower(frontRightSpeed, backRightSpeed, frontLeftSpeed, backLeftSpeed);
+    }
+
+    /**
+     * Returns whether or not the robot is at the target position.
+     *
+     * @return Whether or not the robot is at the target position.
+     */
+    public boolean atTargetPosition() {
+
+        // Check if the robot is within the error tolerance for its target position. If it isn't return false,
+        // as we aren't yet at the target position.
+        if (Math.abs(coordinateSystem.getRobotXCoordinateMeters() - this.targetPosition.getX()) > positionalErrorToleranceMeters) {
+            return false;
+        }
+        if (Math.abs(coordinateSystem.getRobotZCoordinateMeters() - this.targetPosition.getZ()) > positionalErrorToleranceMeters) {
+            return false;
+        }
+
+        // Return whether or not the robot is within the rotational tolerance. This i the only thing left
+        // determining if the robot is at the target position.
+        return !(Math.abs(coordinateSystem.clampAngle(coordinateSystem.getRobotHeadingRadians(false) - this.targetPosition.getYawInRadians())) < rotationalErrorToleranceRadians);
+    }
+
     @Override
     public void periodic() {
 
+        // Call other subsystem's periodic methods.
+        coordinateSystem.periodic();
+
+        // Output diagnostic data.
+        //telemetry.addLine("Target X (m): " + targetPosition.getX());
+        //telemetry.addLine("Target Z (m): " + targetPosition.getZ());
+        //telemetry.addLine("Target Rotation: " + (targetPosition.getYawInRadians() * 180 / Math.PI));
+        //telemetry.addLine("Active : " + autonomousControlActive);
+        telemetry.addLine("Drivetrain at Target Position: " + atTargetPosition());
+
+        // If told to do so, drive autonomously.
+        if (autonomousControlActive) {
+            calculateNewMotorPower();
+        }
     }
 }

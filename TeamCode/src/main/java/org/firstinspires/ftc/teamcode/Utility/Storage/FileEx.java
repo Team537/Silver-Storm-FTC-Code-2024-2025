@@ -124,6 +124,9 @@ public class FileEx {
             case "Integer":
                 result = Integer.parseInt(value);
                 break;
+            case "Long":
+                result = Long.parseLong(value);
+                break;
             case "Double":
                 result = Double.parseDouble(value);
                 break;

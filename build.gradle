@@ -20,10 +20,6 @@ plugins {
     id 'org.owasp.dependencycheck' version '8.4.0'
 }
 
-dependencies {
-    spotbugs 'com.github.spotbugs:spotbugs:4.7.3'
-}
-
 // This is now required because aapt2 has to be downloaded from the
 // google() repository beginning with version 3.2 of the Android Gradle Plugin
 allprojects {
@@ -33,14 +29,21 @@ allprojects {
     }
 }
 
-repositories {
-    mavenCentral()
-}
+// SpotBugs configuration for subprojects
+subprojects {
+    apply plugin: 'com.github.spotbugs'
 
-tasks.withType(com.github.spotbugs.SpotBugsTask) {
-    reports {
-        xml.enabled = false
-        html.enabled = true
+    tasks.withType(com.github.spotbugs.SpotBugsTask) {
+        reports {
+            xml.enabled = false
+            html.enabled = true
+        }
     }
 }
 
+// OWASP Dependency Check configuration
+dependencyCheck {
+    format = 'ALL'
+    outputDirectory = "${buildDir}/reports/dependency-check"
+    failBuildOnCVSS = 7.0
+}

@@ -4,6 +4,12 @@
  * It is extraordinarily rare that you will ever need to edit this file.
  */
 
+plugins {
+    id 'com.github.spotbugs' version '5.0.13'
+    id 'org.owasp.dependencycheck' version '8.4.0'
+    
+}
+
 buildscript {
     repositories {
         mavenCentral()
@@ -12,6 +18,7 @@ buildscript {
     dependencies {
         // Note for FTC Teams: Do not modify this yourself.
         classpath 'com.android.tools.build:gradle:7.2.0'
+        spotbugs 'com.github.spotbugs:spotbugs:4.7.3'
     }
 }
 
@@ -27,3 +34,11 @@ allprojects {
 repositories {
     mavenCentral()
 }
+
+tasks.withType(com.github.spotbugs.SpotBugsTask) {
+    reports {
+        xml.enabled = false
+        html.enabled = true
+    }
+}
+
